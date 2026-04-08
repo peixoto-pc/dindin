@@ -68,8 +68,7 @@ services:
   # Serviço: Aplicação Next.js
   # ============================================
   app:
-    build: .
-    image: felipegcoutinho/openmonetis:latest
+    image: pcpeixoto/dindin:latest
 
     container_name: openmonetis_app
     restart: unless-stopped

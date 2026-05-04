@@ -13,7 +13,7 @@ const formatOccurrences = (value: number | null) => {
 		return "Recorrência contínua";
 	}
 
-	return `${value} recorrências`;
+	return `${value} recorrências mensais`;
 };
 
 export function RecurringExpensesWidget({

@@ -174,7 +174,7 @@ export function TransactionsTable({
 			: getPaginationRowModel(),
 		manualPagination: isServerPaginated,
 		pageCount: serverPagination?.totalPages,
-		enableRowSelection: true,
+		enableRowSelection: (row) => !row.original.readonly,
 	});
 
 	const rowModel = table.getRowModel();

@@ -43,6 +43,15 @@ type PageProps = {
 const capitalize = (value: string) =>
 	value.length > 0 ? value[0]?.toUpperCase().concat(value.slice(1)) : value;
 
+const resolveDefaultPaymentMethod = (
+	accountType: string | null | undefined,
+) => {
+	if (accountType === "Dinheiro") return "Dinheiro";
+	if (accountType === "Pré-Pago | VR/VA") return "Pré-Pago | VR/VA";
+
+	return "Pix";
+};
+
 export default async function Page({ params, searchParams }: PageProps) {
 	await connection();
 	const { accountId } = await params;
@@ -197,7 +206,11 @@ export default async function Page({ params, searchParams }: PageProps) {
 						accountId: account.id,
 						settledOnly: true,
 					}}
-					allowCreate={false}
+					allowCreate
+					defaultAccountId={account.id}
+					defaultPaymentMethod={resolveDefaultPaymentMethod(
+						account.accountType,
+					)}
 					noteAsColumn={userPreferences?.statementNoteAsColumn ?? false}
 					columnOrder={userPreferences?.transactionsColumnOrder ?? null}
 					attachmentMaxSizeMb={userPreferences?.attachmentMaxSizeMb ?? 50}

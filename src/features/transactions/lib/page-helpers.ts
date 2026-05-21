@@ -27,7 +27,13 @@ import {
 	TRANSACTION_CONDITIONS,
 	TRANSACTION_TYPES,
 } from "@/features/transactions/lib/constants";
-import { ACCOUNT_AUTO_INVOICE_NOTE_PREFIX } from "@/shared/lib/accounts/constants";
+import {
+	ACCOUNT_AUTO_INVOICE_NOTE_PREFIX,
+	INITIAL_BALANCE_CONDITION,
+	INITIAL_BALANCE_NOTE,
+	INITIAL_BALANCE_PAYMENT_METHOD,
+	INITIAL_BALANCE_TRANSACTION_TYPE,
+} from "@/shared/lib/accounts/constants";
 import {
 	PAYER_ROLE_ADMIN,
 	PAYER_ROLE_THIRD_PARTY,
@@ -551,8 +557,10 @@ export const mapTransactionsData = (rows: TransactionRowWithRelations[]) =>
 		hasAttachments: item.hasAttachments ?? false,
 		readonly:
 			Boolean(item.note?.startsWith(ACCOUNT_AUTO_INVOICE_NOTE_PREFIX)) ||
-			item.category?.name === "Saldo inicial" ||
-			item.category?.name === "Pagamentos",
+			(item.note === INITIAL_BALANCE_NOTE &&
+				item.transactionType === INITIAL_BALANCE_TRANSACTION_TYPE &&
+				item.condition === INITIAL_BALANCE_CONDITION &&
+				item.paymentMethod === INITIAL_BALANCE_PAYMENT_METHOD),
 	}));
 
 const sortByLabel = <T extends { label: string }>(items: T[]) =>

@@ -17,6 +17,7 @@ export interface TransactionDialogProps {
 	estabelecimentos: string[];
 	transaction?: TransactionItem;
 	defaultPeriod?: string;
+	defaultAccountId?: string | null;
 	defaultCardId?: string | null;
 	defaultPaymentMethod?: string | null;
 	defaultPurchaseDate?: string | null;

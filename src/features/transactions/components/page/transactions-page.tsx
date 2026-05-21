@@ -63,6 +63,7 @@ interface TransactionsPageProps {
 	categoryFilterOptions: TransactionFilterOption[];
 	accountCardFilterOptions: AccountCardFilterOption[];
 	selectedPeriod: string;
+	defaultAccountId?: string | null;
 	estabelecimentos: string[];
 	allowCreate?: boolean;
 	noteAsColumn?: boolean;
@@ -96,6 +97,7 @@ export function TransactionsPage({
 	categoryFilterOptions,
 	accountCardFilterOptions,
 	selectedPeriod,
+	defaultAccountId,
 	estabelecimentos,
 	allowCreate = true,
 	noteAsColumn = false,
@@ -562,6 +564,7 @@ export function TransactionsPage({
 				categoryOptions={categoryOptions}
 				estabelecimentos={estabelecimentos}
 				defaultPeriod={selectedPeriod}
+				defaultAccountId={defaultAccountId}
 				defaultCardId={defaultCardId}
 				defaultPaymentMethod={defaultPaymentMethod}
 				lockCardSelection={lockCardSelection}
@@ -585,6 +588,7 @@ export function TransactionsPage({
 				categoryOptions={categoryOptions}
 				estabelecimentos={estabelecimentos}
 				defaultPeriod={selectedPeriod}
+				defaultAccountId={defaultAccountId}
 				defaultCardId={defaultCardId}
 				defaultPaymentMethod={defaultPaymentMethod}
 				lockCardSelection={lockCardSelection}
@@ -648,6 +652,7 @@ export function TransactionsPage({
 				estabelecimentos={estabelecimentos}
 				transaction={transactionToCopy ?? undefined}
 				defaultPeriod={selectedPeriod}
+				defaultAccountId={defaultAccountId}
 				maxSizeMb={attachmentMaxSizeMb}
 			/>
 
@@ -669,6 +674,7 @@ export function TransactionsPage({
 				estabelecimentos={estabelecimentos}
 				transaction={transactionToImport ?? undefined}
 				defaultPeriod={selectedPeriod}
+				defaultAccountId={defaultAccountId}
 				isImporting={true}
 				maxSizeMb={attachmentMaxSizeMb}
 			/>
@@ -697,6 +703,7 @@ export function TransactionsPage({
 				estabelecimentos={estabelecimentos}
 				transaction={selectedTransaction ?? undefined}
 				defaultPeriod={selectedPeriod}
+				defaultAccountId={defaultAccountId}
 				onBulkEditRequest={handleBulkEditRequest}
 				onSplitEditRequest={handleSplitEditRequest}
 				maxSizeMb={attachmentMaxSizeMb}

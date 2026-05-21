@@ -8,6 +8,7 @@ import {
 	transactionAttachments,
 	transactions,
 } from "@/db/schema";
+import { ACCOUNT_AUTO_INVOICE_NOTE_PREFIX } from "@/shared/lib/accounts/constants";
 import { handleActionError } from "@/shared/lib/actions/helpers";
 import { getUser } from "@/shared/lib/auth/server";
 import { db } from "@/shared/lib/db";
@@ -230,13 +231,6 @@ export async function updateTransactionAction(
 				eq(transactions.id, data.id),
 				eq(transactions.userId, user.id),
 			),
-			with: {
-				category: {
-					columns: {
-						name: true,
-					},
-				},
-			},
 		})) as
 			| {
 					id: string;
@@ -248,7 +242,6 @@ export async function updateTransactionAction(
 					accountId: string | null;
 					cardId: string | null;
 					categoryId: string | null;
-					category: { name: string } | null;
 			  }
 			| undefined;
 
@@ -256,14 +249,17 @@ export async function updateTransactionAction(
 			return { success: false, error: "Lançamento não encontrado." };
 		}
 
-		const categoriasProtegidasEdicao = ["Saldo inicial", "Pagamentos"];
-		if (
-			existing.category?.name &&
-			categoriasProtegidasEdicao.includes(existing.category.name)
-		) {
+		if (existing.note?.startsWith(ACCOUNT_AUTO_INVOICE_NOTE_PREFIX)) {
 			return {
 				success: false,
-				error: `Lançamentos com a categoria '${existing.category.name}' não podem ser editados.`,
+				error: "Pagamentos automáticos de fatura não podem ser editados.",
+			};
+		}
+
+		if (isInitialBalanceTransaction(existing)) {
+			return {
+				success: false,
+				error: "Lançamentos de saldo inicial não podem ser editados.",
 			};
 		}
 
@@ -391,13 +387,6 @@ export async function deleteTransactionAction(
 				eq(transactions.id, data.id),
 				eq(transactions.userId, user.id),
 			),
-			with: {
-				category: {
-					columns: {
-						name: true,
-					},
-				},
-			},
 		})) as
 			| {
 					id: string;
@@ -411,7 +400,6 @@ export async function deleteTransactionAction(
 					period: string;
 					note: string | null;
 					categoryId: string | null;
-					category: { name: string } | null;
 			  }
 			| undefined;
 
@@ -419,14 +407,17 @@ export async function deleteTransactionAction(
 			return { success: false, error: "Lançamento não encontrado." };
 		}
 
-		const categoriasProtegidasRemocao = ["Saldo inicial", "Pagamentos"];
-		if (
-			existing.category?.name &&
-			categoriasProtegidasRemocao.includes(existing.category.name)
-		) {
+		if (existing.note?.startsWith(ACCOUNT_AUTO_INVOICE_NOTE_PREFIX)) {
 			return {
 				success: false,
-				error: `Lançamentos com a categoria '${existing.category.name}' não podem ser removidos.`,
+				error: "Pagamentos automáticos de fatura não podem ser removidos.",
+			};
+		}
+
+		if (isInitialBalanceTransaction(existing)) {
+			return {
+				success: false,
+				error: "Lançamentos de saldo inicial não podem ser removidos.",
 			};
 		}
 

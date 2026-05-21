@@ -335,6 +335,12 @@ const baseFields = z.object({
 		.min(1, "Selecione uma quantidade válida.")
 		.max(60, "Selecione uma quantidade válida.")
 		.optional(),
+	startInstallment: z.coerce
+		.number()
+		.int()
+		.min(1, "Selecione uma parcela válida.")
+		.max(60, "Selecione uma parcela válida.")
+		.optional(),
 	recurrenceCount: z.coerce
 		.number()
 		.int()
@@ -414,6 +420,15 @@ const refineLancamento = (
 				code: z.ZodIssueCode.custom,
 				path: ["installmentCount"],
 				message: "Selecione pelo menos duas parcelas.",
+			});
+		} else if (
+			data.startInstallment &&
+			data.startInstallment > data.installmentCount
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["startInstallment"],
+				message: "A parcela inicial não pode ser maior que o total.",
 			});
 		}
 	}
@@ -651,24 +666,27 @@ export const buildTransactionRecords = ({
 
 	if (data.condition === "Parcelado") {
 		const installmentTotal = data.installmentCount ?? 0;
+		const startInstallment = data.startInstallment ?? 1;
 		const amountsByShare = shares.map((share) =>
 			splitAmount(share.amountCents, installmentTotal),
 		);
 
 		for (
-			let installment = 0;
-			installment < installmentTotal;
-			installment += 1
+			let index = 0;
+			index <= installmentTotal - startInstallment;
+			index += 1
 		) {
-			const installmentPeriod = addMonthsToPeriod(period, installment);
+			const currentInstallment = startInstallment + index;
+			const installmentPeriod = addMonthsToPeriod(period, index);
 			const installmentDueDate = dueDate
-				? addMonthsToDate(dueDate, installment)
+				? addMonthsToDate(dueDate, index)
 				: null;
 			const splitGroupId = cycleSplitGroupId();
 
 			shares.forEach((share, shareIndex) => {
-				const amountCents = amountsByShare[shareIndex]?.[installment] ?? 0;
-				const settled = resolveSettledValue(installment);
+				const amountCents =
+					amountsByShare[shareIndex]?.[currentInstallment - 1] ?? 0;
+				const settled = resolveSettledValue(index);
 				records.push({
 					...basePayload,
 					amount: centsToDecimalString(amountCents * amountSign),
@@ -677,7 +695,7 @@ export const buildTransactionRecords = ({
 					period: installmentPeriod,
 					isSettled: settled,
 					installmentCount: installmentTotal,
-					currentInstallment: installment + 1,
+					currentInstallment,
 					recurrenceCount: null,
 					dueDate: installmentDueDate,
 					splitGroupId,

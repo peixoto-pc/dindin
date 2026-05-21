@@ -80,6 +80,7 @@ export type TransactionFormState = {
 	cardId: string | undefined;
 	categoryId: string | undefined;
 	installmentCount: string;
+	startInstallment: string;
 	recurrenceCount: string;
 	dueDate: string;
 	boletoPaymentDate: string;
@@ -92,6 +93,7 @@ export type TransactionFormState = {
  */
 type TransactionFormOverrides = {
 	defaultCardId?: string | null;
+	defaultAccountId?: string | null;
 	defaultPaymentMethod?: string | null;
 	defaultPurchaseDate?: string | null;
 	defaultName?: string | null;
@@ -178,7 +180,9 @@ export function buildTransactionInitialState(
 				? undefined
 				: isImporting
 					? undefined
-					: (transaction?.accountId ?? undefined),
+					: (transaction?.accountId ??
+						overrides?.defaultAccountId ??
+						undefined),
 		cardId:
 			paymentMethod === "Cartão de crédito"
 				? isImporting
@@ -191,6 +195,12 @@ export function buildTransactionInitialState(
 		installmentCount: transaction?.installmentCount
 			? String(transaction.installmentCount)
 			: "",
+		startInstallment:
+			isImporting &&
+			transaction?.condition === "Parcelado" &&
+			transaction.currentInstallment
+				? String(transaction.currentInstallment)
+				: "1",
 		recurrenceCount: transaction?.recurrenceCount
 			? String(transaction.recurrenceCount)
 			: "",
@@ -252,9 +262,22 @@ export function applyFieldDependencies(
 	if (key === "condition" && typeof value === "string") {
 		if (value !== "Parcelado") {
 			updates.installmentCount = "";
+			updates.startInstallment = "1";
 		}
 		if (value !== "Recorrente") {
 			updates.recurrenceCount = "";
+		}
+	}
+
+	if (key === "installmentCount" && typeof value === "string" && value) {
+		const nextCount = Number.parseInt(value, 10);
+		const currentStart = Number.parseInt(currentState.startInstallment, 10);
+		if (
+			!Number.isNaN(nextCount) &&
+			!Number.isNaN(currentStart) &&
+			currentStart > nextCount
+		) {
+			updates.startInstallment = String(nextCount);
 		}
 	}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { RiCalendarCheckLine, RiCloseLine, RiEyeLine } from "@remixicon/react";
+import { RiCalendarCheckLine } from "@remixicon/react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useTransition } from "react";
@@ -164,16 +164,14 @@ export function AnticipationCard({
 					onClick={handleViewLancamento}
 					disabled={isPending}
 				>
-					<RiEyeLine className="mr-2 size-4" />
-					Ver Lançamento
+					Cancelar
 				</Button>
 
 				{canCancel && (
 					<ConfirmActionDialog
 						trigger={
 							<Button variant="destructive" size="sm" disabled={isPending}>
-								<RiCloseLine className="mr-2 size-4" />
-								Cancelar Antecipação
+								Desfazer Antecipação
 							</Button>
 						}
 						title="Cancelar antecipação?"

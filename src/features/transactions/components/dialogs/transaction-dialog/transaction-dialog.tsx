@@ -65,6 +65,7 @@ export function TransactionDialog({
 	estabelecimentos,
 	transaction,
 	defaultPeriod,
+	defaultAccountId,
 	defaultCardId,
 	defaultPaymentMethod,
 	defaultPurchaseDate,
@@ -88,6 +89,7 @@ export function TransactionDialog({
 
 	const [formState, setFormState] = useState<FormState>(() =>
 		buildTransactionInitialState(transaction, defaultPayerId, defaultPeriod, {
+			defaultAccountId,
 			defaultCardId,
 			defaultPaymentMethod,
 			defaultPurchaseDate,
@@ -112,6 +114,7 @@ export function TransactionDialog({
 				defaultPayerId,
 				defaultPeriod,
 				{
+					defaultAccountId,
 					defaultCardId,
 					defaultPaymentMethod,
 					defaultPurchaseDate,
@@ -151,6 +154,7 @@ export function TransactionDialog({
 		transaction,
 		defaultPayerId,
 		defaultPeriod,
+		defaultAccountId,
 		defaultCardId,
 		defaultPaymentMethod,
 		defaultPurchaseDate,
@@ -326,6 +330,12 @@ export function TransactionDialog({
 			installmentCount:
 				formState.condition === "Parcelado" && formState.installmentCount
 					? Number(formState.installmentCount)
+					: undefined,
+			startInstallment:
+				mode === "create" &&
+				formState.condition === "Parcelado" &&
+				formState.startInstallment
+					? Number(formState.startInstallment)
 					: undefined,
 			recurrenceCount:
 				formState.condition === "Recorrente" && formState.recurrenceCount

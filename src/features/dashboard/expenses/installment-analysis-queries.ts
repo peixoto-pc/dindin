@@ -51,6 +51,9 @@ export type InstallmentGroup = {
 	cartaoDueDay: string | null;
 	cartaoLogo: string | null;
 	totalInstallments: number;
+	trackedStartInstallment: number;
+	trackedInstallments: number;
+	untrackedInstallments: number;
 	paidInstallments: number;
 	pendingInstallments: InstallmentDetail[];
 	totalPendingAmount: number;
@@ -153,6 +156,12 @@ export async function fetchInstallmentAnalysis(
 				cartaoDueDay: row.cartaoDueDay,
 				cartaoLogo: row.cartaoLogo,
 				totalInstallments: row.installmentCount ?? 0,
+				trackedStartInstallment: installmentDetail.currentInstallment,
+				trackedInstallments: 1,
+				untrackedInstallments: Math.max(
+					0,
+					installmentDetail.currentInstallment - 1,
+				),
 				paidInstallments: 0,
 				pendingInstallments: [installmentDetail],
 				totalPendingAmount: amount,
@@ -168,7 +177,13 @@ export async function fetchInstallmentAnalysis(
 			const paidCount = group.pendingInstallments.filter(
 				(i) => i.isSettled,
 			).length;
+			const trackedStartInstallment = Math.min(
+				...group.pendingInstallments.map((i) => i.currentInstallment),
+			);
 			group.paidInstallments = paidCount;
+			group.trackedStartInstallment = trackedStartInstallment;
+			group.trackedInstallments = group.pendingInstallments.length;
+			group.untrackedInstallments = Math.max(0, trackedStartInstallment - 1);
 			return group;
 		})
 		// Filtrar apenas séries que têm pelo menos uma parcela em aberto (não paga)

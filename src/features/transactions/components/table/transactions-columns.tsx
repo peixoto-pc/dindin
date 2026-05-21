@@ -426,7 +426,7 @@ function buildColumns({
 				const initial = displayName.charAt(0).toUpperCase() || "?";
 				const content = (
 					<>
-						<Avatar className="size-7">
+						<Avatar className="size-8">
 							<AvatarImage src={avatarSrc} alt={`Avatar de ${label}`} />
 							<AvatarFallback className="text-xs font-medium uppercase">
 								{initial}
@@ -477,15 +477,21 @@ function buildColumns({
 				const content = (
 					<span className="inline-flex items-center gap-2">
 						{logoSrc && (
-							<Image
-								src={logoSrc}
-								alt={`Logo de ${label}`}
-								width={30}
-								height={30}
-								className="rounded-full"
-							/>
+							<Avatar className="size-8">
+								<AvatarImage src={logoSrc} alt={`Logo de ${label}`} />
+								<AvatarFallback className="text-xs font-medium uppercase">
+									{label}
+								</AvatarFallback>
+							</Avatar>
 						)}
-						<span className="truncate">{label}</span>
+						<span
+							className={cn(
+								"truncate underline-offset-2",
+								isOwnData && href && "group-hover:underline",
+							)}
+						>
+							{label}
+						</span>
 					</span>
 				);
 
@@ -503,7 +509,7 @@ function buildColumns({
 				return (
 					<Tooltip>
 						<TooltipTrigger asChild>
-							<Link href={href} className="hover:underline">
+							<Link href={href} className="group">
 								{content}
 							</Link>
 						</TooltipTrigger>
@@ -654,14 +660,14 @@ function buildColumns({
 									Editar
 								</DropdownMenuItem>
 							)}
-							{row.original.categoriaName !== "Pagamentos" &&
+							{!row.original.readonly &&
 								row.original.userId === currentUserId && (
 									<DropdownMenuItem onSelect={() => handleCopy(row.original)}>
 										<RiFileCopyLine className="size-4" />
 										Copiar
 									</DropdownMenuItem>
 								)}
-							{row.original.categoriaName !== "Pagamentos" &&
+							{!row.original.readonly &&
 								row.original.userId !== currentUserId && (
 									<DropdownMenuItem onSelect={() => handleImport(row.original)}>
 										<RiFileCopyLine className="size-4" />

@@ -64,8 +64,8 @@ export function InstallmentGroupCard({
 	const hasSelection = selectedInstallments.size > 0;
 
 	const progress =
-		group.totalInstallments > 0
-			? (group.paidInstallments / group.totalInstallments) * 100
+		group.trackedInstallments > 0
+			? (group.paidInstallments / group.trackedInstallments) * 100
 			: 0;
 
 	const selectedAmount = group.pendingInstallments
@@ -83,6 +83,10 @@ export function InstallmentGroupCard({
 	);
 	const cardLogoSrc = resolveLogoSrc(group.cartaoLogo);
 	const cardName = group.cartaoName ?? "Compra parcelada";
+	const untrackedLabel =
+		group.untrackedInstallments === 1
+			? "1 parcela anterior fora do acompanhamento"
+			: `${group.untrackedInstallments} parcelas anteriores fora do acompanhamento`;
 
 	return (
 		<>
@@ -153,7 +157,7 @@ export function InstallmentGroupCard({
 					<div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-primary/5 mb-4">
 						<div className="space-y-1">
 							<p className="text-xs text-muted-foreground font-medium">
-								Valor total
+								Valor acompanhado
 							</p>
 							<MoneyValues
 								amount={totalAmount}
@@ -180,8 +184,8 @@ export function InstallmentGroupCard({
 							<div className="flex items-center gap-1 text-muted-foreground">
 								<RiCheckboxCircleFill className="size-3.5 text-success" />
 								<span>
-									{group.paidInstallments} de {group.totalInstallments} parcelas
-									pagas
+									{group.paidInstallments} de {group.trackedInstallments}{" "}
+									parcelas acompanhadas pagas
 								</span>
 							</div>
 							{unpaidCount > 0 && (
@@ -198,6 +202,9 @@ export function InstallmentGroupCard({
 							className="h-2.5 bg-muted"
 							indicatorClassName="bg-success"
 						/>
+						{group.untrackedInstallments > 0 && (
+							<p className="text-xs text-muted-foreground">{untrackedLabel}</p>
+						)}
 					</div>
 
 					{/* Valor selecionado */}

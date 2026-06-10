@@ -2,6 +2,7 @@ import { RiCalendarLine } from "@remixicon/react";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card } from "@/shared/components/ui/card";
 import type { ImportStatement } from "@/shared/lib/import/types";
+import { formatCurrency } from "@/shared/utils/currency";
 import { formatDate } from "@/shared/utils/date";
 
 interface ImportSummaryProps {
@@ -10,6 +11,7 @@ interface ImportSummaryProps {
 	selected: number;
 	duplicates: number;
 	uncategorized: number;
+	selectedTotal: number;
 }
 
 export function ImportSummary({
@@ -18,15 +20,21 @@ export function ImportSummary({
 	selected,
 	duplicates,
 	uncategorized,
+	selectedTotal,
 }: ImportSummaryProps) {
 	return (
 		<Card className="flex flex-col gap-1 p-5 text-sm bg-linear-to-br from-primary/5 to-transparent">
-			{/* Linha 1: título */}
-			<div className="flex items-center gap-2">
-				<span className="font-medium">{statement.source}</span>
-				{statement.isCreditCard && (
-					<Badge variant="outline">Cartão de crédito</Badge>
-				)}
+			{/* Linha 1: título + total */}
+			<div className="flex items-center justify-between gap-4">
+				<div className="flex items-center gap-2">
+					<span className="font-medium">{statement.source}</span>
+					{statement.isCreditCard && (
+						<Badge variant="outline">Cartão de crédito</Badge>
+					)}
+				</div>
+				<span className="font-semibold tabular-nums">
+					{formatCurrency(selectedTotal)}
+				</span>
 			</div>
 
 			{/* Linha 2: metadados */}

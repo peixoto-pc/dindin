@@ -155,14 +155,18 @@ export function ImportPage({
 
 	const isCard = accountCardValue?.startsWith("card:") ?? false;
 
-	const { selectedRows, duplicateCount, uncategorizedCount } = useMemo(() => {
-		const selected = rows.filter((r) => r.selected);
-		return {
-			selectedRows: selected,
-			duplicateCount: rows.filter((r) => r.isDuplicate).length,
-			uncategorizedCount: selected.filter((r) => !r.categoryId).length,
-		};
-	}, [rows]);
+	const { selectedRows, duplicateCount, uncategorizedCount, selectedTotal } =
+		useMemo(() => {
+			const selected = rows.filter((r) => r.selected);
+			return {
+				selectedRows: selected,
+				duplicateCount: rows.filter((r) => r.isDuplicate).length,
+				uncategorizedCount: selected.filter((r) => !r.categoryId).length,
+				selectedTotal: selected
+					.filter((r) => r.transactionType === "expense")
+					.reduce((sum, r) => sum + r.amount, 0),
+			};
+		}, [rows]);
 
 	const canImport =
 		selectedRows.length > 0 &&
@@ -280,6 +284,7 @@ export function ImportPage({
 								selected={selectedRows.length}
 								duplicates={duplicateCount}
 								uncategorized={uncategorizedCount}
+								selectedTotal={selectedTotal}
 							/>
 
 							<GlobalFields

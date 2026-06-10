@@ -20,8 +20,9 @@ async function extractLinesFromPdf(buffer: ArrayBuffer): Promise<string[]> {
 	const pdfjsLib = await import("pdfjs-dist");
 	pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
-	const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer.slice(0)) })
-		.promise;
+	const pdf = await pdfjsLib.getDocument({
+		data: new Uint8Array(buffer.slice(0)),
+	}).promise;
 	const lines: string[] = [];
 
 	for (let p = 1; p <= pdf.numPages; p++) {

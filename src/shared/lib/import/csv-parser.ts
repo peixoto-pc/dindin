@@ -1,4 +1,7 @@
-import type { ImportedTransaction, ImportStatement } from "@/shared/lib/import/types";
+import type {
+	ImportedTransaction,
+	ImportStatement,
+} from "@/shared/lib/import/types";
 
 function parseDateValue(value: string): string | null {
 	const str = value.trim();
@@ -18,7 +21,10 @@ function parseDateValue(value: string): string | null {
 
 function parseAmountValue(value: string): number | null {
 	const num = Number.parseFloat(
-		value.trim().replace(",", ".").replace(/[^\d.-]/g, ""),
+		value
+			.trim()
+			.replace(",", ".")
+			.replace(/[^\d.-]/g, ""),
 	);
 	return Number.isNaN(num) || num <= 0 ? null : num;
 }

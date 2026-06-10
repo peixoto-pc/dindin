@@ -1,7 +1,13 @@
 /**
  * Tipos de providers disponíveis
  */
-export type AIProvider = "openai" | "anthropic" | "google" | "openrouter";
+export type AIProvider =
+	| "openai"
+	| "anthropic"
+	| "google"
+	| "minimax"
+	| "openrouter"
+	| "ollama";
 
 /**
  * Metadados dos providers
@@ -10,22 +16,26 @@ export const PROVIDERS = {
 	openai: {
 		id: "openai" as const,
 		name: "ChatGPT",
-		icon: "RiOpenaiLine",
 	},
 	anthropic: {
 		id: "anthropic" as const,
 		name: "Claude AI",
-		icon: "RiRobot2Line",
 	},
 	google: {
 		id: "google" as const,
 		name: "Gemini",
-		icon: "RiGoogleLine",
+	},
+	minimax: {
+		id: "minimax" as const,
+		name: "MiniMax",
 	},
 	openrouter: {
 		id: "openrouter" as const,
 		name: "OpenRouter",
-		icon: "RiRouterLine",
+	},
+	ollama: {
+		id: "ollama" as const,
+		name: "Ollama",
 	},
 } as const;
 
@@ -34,14 +44,16 @@ export const PROVIDERS = {
  */
 export const AVAILABLE_MODELS = [
 	// OpenAI
+	{ id: "gpt-5.5-pro", name: "GPT-5.5 Pro", provider: "openai" as const },
+	{ id: "gpt-5.5", name: "GPT-5.5", provider: "openai" as const },
 	{ id: "gpt-5.4", name: "GPT-5.4", provider: "openai" as const },
 	{ id: "gpt-5.4-mini", name: "GPT-5.4 Mini", provider: "openai" as const },
 	{ id: "gpt-5.4-nano", name: "GPT-5.4 Nano", provider: "openai" as const },
 
 	// Anthropic
 	{
-		id: "claude-opus-4-6",
-		name: "Claude Opus 4.6",
+		id: "claude-opus-4-8",
+		name: "Claude Opus 4.8",
 		provider: "anthropic" as const,
 	},
 	{
@@ -71,9 +83,52 @@ export const AVAILABLE_MODELS = [
 		name: "Gemini 3.1 Flash Lite",
 		provider: "google" as const,
 	},
+
+	// MiniMax
+	{
+		id: "MiniMax-M2.7",
+		name: "MiniMax M2.7",
+		provider: "minimax" as const,
+	},
+	{
+		id: "MiniMax-M2.7-highspeed",
+		name: "MiniMax M2.7 Highspeed",
+		provider: "minimax" as const,
+	},
+	{
+		id: "MiniMax-M2.5",
+		name: "MiniMax M2.5",
+		provider: "minimax" as const,
+	},
+	{
+		id: "MiniMax-M2.5-highspeed",
+		name: "MiniMax M2.5 Highspeed",
+		provider: "minimax" as const,
+	},
+	{
+		id: "MiniMax-M2.1",
+		name: "MiniMax M2.1",
+		provider: "minimax" as const,
+	},
+	{
+		id: "MiniMax-M2.1-highspeed",
+		name: "MiniMax M2.1 Highspeed",
+		provider: "minimax" as const,
+	},
+	{
+		id: "MiniMax-M2",
+		name: "MiniMax M2",
+		provider: "minimax" as const,
+	},
+
+	// Ollama
+	{ id: "ollama:llama3.2", name: "Llama 3.2", provider: "ollama" as const },
+	{ id: "ollama:llama3.1", name: "Llama 3.1", provider: "ollama" as const },
+	{ id: "ollama:qwen2.5", name: "Qwen 2.5", provider: "ollama" as const },
+	{ id: "ollama:mistral", name: "Mistral", provider: "ollama" as const },
 ] as const;
 
-export const DEFAULT_MODEL = "gpt-5.4";
+export const DEFAULT_MODEL = "gpt-5.5";
 export const DEFAULT_PROVIDER = "openai";
 
 /**

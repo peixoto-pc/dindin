@@ -13,7 +13,7 @@ const sizeVariants = {
 	sm: {
 		container: "size-8",
 		icon: "size-4",
-		text: "text-[10px]",
+		text: "text-xs",
 	},
 	md: {
 		container: "size-9",
@@ -27,9 +27,9 @@ const sizeVariants = {
 	},
 } as const;
 
-export type CategoryIconBadgeSize = keyof typeof sizeVariants;
+type CategoryIconBadgeSize = keyof typeof sizeVariants;
 
-export interface CategoryIconBadgeProps {
+interface CategoryIconBadgeProps {
 	/** Nome do ícone Remix (ex: "RiShoppingBag3Line") */
 	icon?: string | null;
 	/** Nome da categoria — define cor e iniciais de fallback */

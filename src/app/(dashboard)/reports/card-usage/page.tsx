@@ -1,11 +1,11 @@
 import { RiBankCard2Line } from "@remixicon/react";
 import { connection } from "next/server";
-import { fetchCartoesReportData } from "@/features/reports/cards-report-queries";
 import { CardCategoryBreakdown } from "@/features/reports/components/cards/card-category-breakdown";
 import { CardInvoiceStatus } from "@/features/reports/components/cards/card-invoice-status";
 import { CardTopExpenses } from "@/features/reports/components/cards/card-top-expenses";
 import { CardUsageChart } from "@/features/reports/components/cards/card-usage-chart";
 import { CardsOverview } from "@/features/reports/components/cards/cards-overview";
+import { fetchCartoesReportData } from "@/features/reports/lib/cards-report-queries";
 import MonthNavigation from "@/shared/components/month-picker/month-navigation";
 import { Card } from "@/shared/components/ui/card";
 import { getUser } from "@/shared/lib/auth/server";
@@ -71,7 +71,7 @@ export default async function RelatorioCartoesPage({
 					<div className="flex size-14 items-center justify-center rounded-full bg-muted mb-4">
 						<RiBankCard2Line className="size-7 text-muted-foreground" />
 					</div>
-					<p className="text-base font-medium">Nenhum cartão selecionado</p>
+					<p className="text-base font-semibold">Nenhum cartão selecionado</p>
 					<p className="text-sm text-muted-foreground mt-1">
 						Selecione um cartão para ver os detalhes de uso.
 					</p>

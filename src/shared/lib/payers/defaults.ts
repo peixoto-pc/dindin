@@ -6,6 +6,7 @@ import {
 	PAYER_ROLE_ADMIN,
 	PAYER_STATUS_OPTIONS,
 } from "./constants";
+import { generateShareCode } from "./share-code";
 import { normalizeNameFromEmail } from "./utils";
 
 const DEFAULT_STATUS = PAYER_STATUS_OPTIONS[0];
@@ -17,7 +18,7 @@ interface SeedUserLike {
 	image?: string | null;
 }
 
-export async function ensureDefaultPagadorForUser(user: SeedUserLike) {
+export async function ensureDefaultPayerForUser(user: SeedUserLike) {
 	const userId = user.id;
 
 	if (!userId) {
@@ -36,7 +37,7 @@ export async function ensureDefaultPagadorForUser(user: SeedUserLike) {
 	const name =
 		(user.name && user.name.trim().length > 0
 			? user.name.trim()
-			: normalizeNameFromEmail(user.email)) || "Payer principal";
+			: normalizeNameFromEmail(user.email)) || "Pessoa principal";
 
 	// Usa a imagem do Google se disponível, senão usa o avatar padrão
 	const avatarUrl = user.image ?? DEFAULT_PAYER_AVATAR;
@@ -49,6 +50,7 @@ export async function ensureDefaultPagadorForUser(user: SeedUserLike) {
 		avatarUrl,
 		note: null,
 		isAutoSend: false,
+		shareCode: generateShareCode(),
 		userId,
 	});
 }

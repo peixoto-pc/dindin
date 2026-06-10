@@ -23,7 +23,7 @@ import {
 } from "@/shared/components/ui/dialog";
 import { useControlledState } from "@/shared/hooks/use-controlled-state";
 import { useFormState } from "@/shared/hooks/use-form-state";
-import { deriveNameFromLogo, normalizeLogo } from "@/shared/lib/logo";
+import { getLogoDisplayName, normalizeLogo } from "@/shared/lib/logo";
 import {
 	formatInitialBalanceInput,
 	normalizeDecimalInput,
@@ -37,7 +37,9 @@ const DEFAULT_ACCOUNT_TYPES = [
 	"Conta Poupança",
 	"Carteira Digital",
 	"Conta Investimento",
+	"Dinheiro",
 	"Pré-Pago | VR/VA",
+	"Outros",
 ] as const;
 
 const DEFAULT_ACCOUNT_STATUS = ["Ativa", "Inativa"] as const;
@@ -64,7 +66,7 @@ const buildInitialValues = ({
 }): AccountFormValues => {
 	const fallbackLogo = logoOptions[0] ?? "";
 	const selectedLogo = normalizeLogo(account?.logo) || fallbackLogo;
-	const derivedName = deriveNameFromLogo(selectedLogo);
+	const derivedName = getLogoDisplayName(selectedLogo);
 
 	return {
 		name: account?.name ?? derivedName,
@@ -227,12 +229,12 @@ export function AccountDialog({
 		});
 	};
 
-	const title = mode === "create" ? "Nova conta" : "Editar conta";
+	const title = mode === "create" ? "Nova conta" : "Atualizar conta";
 	const description =
 		mode === "create"
 			? "Cadastre uma nova conta para organizar seus lançamentos."
 			: "Atualize as informações da conta selecionada.";
-	const submitLabel = mode === "create" ? "Salvar conta" : "Atualizar conta";
+	const submitLabel = mode === "create" ? "Salvar" : "Atualizar";
 
 	const handleMainDialogOpenChange = (open: boolean) => {
 		if (!open && logoDialogOpen) {

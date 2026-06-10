@@ -1,12 +1,13 @@
 "use server";
 
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
-import { transactions } from "@/db/schema";
+import { attachments, transactionAttachments, transactions } from "@/db/schema";
 import {
 	PAYMENT_METHODS,
 	TRANSACTION_CONDITIONS,
 	TRANSACTION_TYPES,
-} from "@/features/transactions/constants";
+} from "@/features/transactions/lib/constants";
+import { ACCOUNT_AUTO_INVOICE_NOTE_PREFIX } from "@/shared/lib/accounts/constants";
 import { handleActionError } from "@/shared/lib/actions/helpers";
 import { getUser } from "@/shared/lib/auth/server";
 import { db } from "@/shared/lib/db";
@@ -17,6 +18,7 @@ import {
 import type { ActionResult } from "@/shared/lib/types/actions";
 import { addMonthsToDate, parseLocalDateString } from "@/shared/utils/date";
 import { addMonthsToPeriod, parsePeriod } from "@/shared/utils/period";
+import { cleanupAttachmentsAfterTransactionDelete } from "./attachments";
 import {
 	centsToDecimalString,
 	type DeleteBulkInput,
@@ -29,6 +31,7 @@ import {
 	fetchOwnedPayerIds,
 	formatPaidInvoicePeriods,
 	getPaidInvoicePeriods,
+	isInitialBalanceTransaction,
 	type MassAddInput,
 	massAddSchema,
 	resolvePeriod,
@@ -46,6 +49,19 @@ const getPeriodOffset = (basePeriod: string, targetPeriod: string) => {
 	return (target.year - base.year) * 12 + (target.month - base.month);
 };
 
+type ProtectedTransactionCandidate = {
+	note: string | null;
+	transactionType: string | null;
+	condition: string | null;
+	paymentMethod: string | null;
+};
+
+const isProtectedTransaction = (
+	record: ProtectedTransactionCandidate,
+): boolean =>
+	Boolean(record.note?.startsWith(ACCOUNT_AUTO_INVOICE_NOTE_PREFIX)) ||
+	isInitialBalanceTransaction(record);
+
 export async function deleteTransactionBulkAction(
 	input: DeleteBulkInput,
 ): Promise<ActionResult> {
@@ -60,6 +76,9 @@ export async function deleteTransactionBulkAction(
 				seriesId: true,
 				period: true,
 				condition: true,
+				transactionType: true,
+				paymentMethod: true,
+				note: true,
 			},
 			where: and(
 				eq(transactions.id, data.id),
@@ -78,71 +97,71 @@ export async function deleteTransactionBulkAction(
 			};
 		}
 
+		if (isProtectedTransaction(existing)) {
+			return {
+				success: false,
+				error: "Lançamentos protegidos não podem ser removidos em massa.",
+			};
+		}
+
+		let scopeFilter: ReturnType<typeof and>;
+		let successMessage: string;
+
 		if (data.scope === "current") {
-			await db
-				.delete(transactions)
-				.where(
-					and(eq(transactions.id, data.id), eq(transactions.userId, user.id)),
-				);
-
-			revalidate(user.id);
-			return { success: true, message: "Lançamento removido com sucesso." };
+			scopeFilter = eq(transactions.id, data.id);
+			successMessage = "Lançamento removido com sucesso.";
+		} else if (data.scope === "period") {
+			scopeFilter = and(
+				eq(transactions.seriesId, existing.seriesId),
+				eq(transactions.period, existing.period ?? ""),
+			);
+			successMessage = "Todos os lançamentos do período foram removidos.";
+		} else if (data.scope === "future") {
+			scopeFilter = and(
+				eq(transactions.seriesId, existing.seriesId),
+				sql`${transactions.period} >= ${existing.period}`,
+			);
+			successMessage = "Lançamentos removidos com sucesso.";
+		} else if (data.scope === "all") {
+			scopeFilter = eq(transactions.seriesId, existing.seriesId);
+			successMessage = "Todos os lançamentos da série foram removidos.";
+		} else {
+			return { success: false, error: "Escopo de ação inválido." };
 		}
 
-		if (data.scope === "period") {
-			await db
-				.delete(transactions)
-				.where(
-					and(
-						eq(transactions.seriesId, existing.seriesId),
-						eq(transactions.userId, user.id),
-						eq(transactions.period, existing.period ?? ""),
-					),
-				);
+		const targetRows = await db
+			.select({ id: transactions.id })
+			.from(transactions)
+			.where(and(scopeFilter, eq(transactions.userId, user.id)));
 
-			revalidate(user.id);
-			return {
-				success: true,
-				message: "Todos os lançamentos do período foram removidos.",
-			};
+		const targetIds = targetRows.map((r) => r.id);
+
+		if (targetIds.length === 0) {
+			return { success: false, error: "Nenhum lançamento encontrado." };
 		}
 
-		if (data.scope === "future") {
-			await db
-				.delete(transactions)
-				.where(
-					and(
-						eq(transactions.seriesId, existing.seriesId),
-						eq(transactions.userId, user.id),
-						sql`${transactions.period} >= ${existing.period}`,
-					),
-				);
+		const linkedAttachments = await db
+			.select({ id: attachments.id, fileKey: attachments.fileKey })
+			.from(transactionAttachments)
+			.innerJoin(
+				attachments,
+				eq(transactionAttachments.attachmentId, attachments.id),
+			)
+			.where(inArray(transactionAttachments.transactionId, targetIds));
 
-			revalidate(user.id);
-			return {
-				success: true,
-				message: "Lançamentos removidos com sucesso.",
-			};
-		}
+		await db
+			.delete(transactions)
+			.where(
+				and(
+					inArray(transactions.id, targetIds),
+					eq(transactions.userId, user.id),
+				),
+			);
 
-		if (data.scope === "all") {
-			await db
-				.delete(transactions)
-				.where(
-					and(
-						eq(transactions.seriesId, existing.seriesId),
-						eq(transactions.userId, user.id),
-					),
-				);
+		await cleanupAttachmentsAfterTransactionDelete(linkedAttachments);
 
-			revalidate(user.id);
-			return {
-				success: true,
-				message: "Todos os lançamentos da série foram removidos.",
-			};
-		}
-
-		return { success: false, error: "Escopo de ação inválido." };
+		revalidate(user.id);
+		return { success: true, message: successMessage };
 	} catch (error) {
 		return handleActionError(error);
 	}
@@ -177,6 +196,7 @@ export async function updateTransactionBulkAction(
 				purchaseDate: true,
 				payerId: true,
 				cardId: true,
+				note: true,
 			},
 			where: and(
 				eq(transactions.id, data.id),
@@ -192,6 +212,13 @@ export async function updateTransactionBulkAction(
 			return {
 				success: false,
 				error: "Este lançamento não faz parte de uma série.",
+			};
+		}
+
+		if (isProtectedTransaction(existing)) {
+			return {
+				success: false,
+				error: "Lançamentos protegidos não podem ser atualizados em massa.",
 			};
 		}
 
@@ -602,7 +629,7 @@ export async function createMassTransactionsAction(
 			if (transaction.payerId && invalidPayers.has(transaction.payerId)) {
 				return {
 					success: false,
-					error: `Payer não encontrado na transação ${i + 1}.`,
+					error: `Pessoa não encontrado na transação ${i + 1}.`,
 				};
 			}
 			if (
@@ -611,7 +638,7 @@ export async function createMassTransactionsAction(
 			) {
 				return {
 					success: false,
-					error: `Category não encontrada na transação ${i + 1}.`,
+					error: `Categoria não encontrada na transação ${i + 1}.`,
 				};
 			}
 		}
@@ -711,7 +738,7 @@ export async function createMassTransactionsAction(
 			await sendPayerAutoEmails({
 				userLabel: resolveUserLabel(user),
 				action: "created",
-				entriesByPagador: notificationEntries,
+				entriesByPayer: notificationEntries,
 			});
 		}
 
@@ -759,6 +786,22 @@ export async function deleteMultipleTransactionsAction(
 			return { success: false, error: "Nenhum lançamento encontrado." };
 		}
 
+		if (existing.some(isProtectedTransaction)) {
+			return {
+				success: false,
+				error: "Lançamentos protegidos não podem ser removidos em massa.",
+			};
+		}
+
+		const linkedAttachments = await db
+			.select({ id: attachments.id, fileKey: attachments.fileKey })
+			.from(transactionAttachments)
+			.innerJoin(
+				attachments,
+				eq(transactionAttachments.attachmentId, attachments.id),
+			)
+			.where(inArray(transactionAttachments.transactionId, data.ids));
+
 		await db
 			.delete(transactions)
 			.where(
@@ -767,6 +810,8 @@ export async function deleteMultipleTransactionsAction(
 					eq(transactions.userId, user.id),
 				),
 			);
+
+		await cleanupAttachmentsAfterTransactionDelete(linkedAttachments);
 
 		const notificationData = existing
 			.filter(
@@ -794,7 +839,7 @@ export async function deleteMultipleTransactionsAction(
 			await sendPayerAutoEmails({
 				userLabel: resolveUserLabel(user),
 				action: "deleted",
-				entriesByPagador: notificationEntries,
+				entriesByPayer: notificationEntries,
 			});
 		}
 

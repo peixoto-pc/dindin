@@ -10,7 +10,11 @@ import {
 	DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
-import { deriveNameFromLogo, resolveLogoSrc } from "@/shared/lib/logo";
+import {
+	getLogoDisplayName,
+	normalizeForSearch,
+	resolveLogoSrc,
+} from "@/shared/lib/logo";
 import { cn } from "@/shared/utils/ui";
 
 const DEFAULT_BASE_PATH = "/logos";
@@ -35,7 +39,7 @@ export function LogoPickerTrigger({
 	className,
 }: LogoPickerTriggerProps) {
 	const hasLogo = Boolean(selectedLogo);
-	const selectedLogoLabel = deriveNameFromLogo(selectedLogo);
+	const selectedLogoLabel = getLogoDisplayName(selectedLogo);
 	const selectedLogoPath =
 		hasLogo && selectedLogo ? resolveLogoSrc(selectedLogo, { basePath }) : null;
 
@@ -49,17 +53,17 @@ export function LogoPickerTrigger({
 				className,
 			)}
 		>
-			<span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/40 bg-background shadow-xs">
+			<span className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/40 bg-background shadow-xs">
 				{selectedLogoPath ? (
 					<Image
 						src={selectedLogoPath}
 						alt={selectedLogoLabel || "Logo selecionado"}
-						width={28}
-						height={28}
-						className="h-full w-full object-contain"
+						fill
+						sizes="32px"
+						className="object-contain"
 					/>
 				) : (
-					<span className="text-[10px] text-muted-foreground">Logo</span>
+					<span className="text-xs text-muted-foreground">Logo</span>
 				)}
 			</span>
 
@@ -102,8 +106,8 @@ export function LogoPickerDialog({
 
 	const filteredLogos = logos.filter((logo) => {
 		if (!search.trim()) return true;
-		const logoLabel = deriveNameFromLogo(logo).toLowerCase();
-		return logoLabel.includes(search.toLowerCase().trim());
+		const logoLabel = getLogoDisplayName(logo);
+		return normalizeForSearch(logoLabel).includes(normalizeForSearch(search));
 	});
 
 	const handleOpenChange = (isOpen: boolean) => {
@@ -145,7 +149,7 @@ export function LogoPickerDialog({
 					<div className="grid max-h-custom-height-card grid-cols-4 gap-2 overflow-y-auto p-1 md:grid-cols-5">
 						{filteredLogos.map((logo) => {
 							const isActive = value === logo;
-							const logoLabel = deriveNameFromLogo(logo);
+							const logoLabel = getLogoDisplayName(logo);
 
 							return (
 								<button
@@ -161,16 +165,18 @@ export function LogoPickerDialog({
 											"border-primary bg-primary/5 ring-2 ring-primary/40",
 									)}
 								>
-									<span className="flex w-full items-center justify-center overflow-hidden rounded-full">
-										<Image
-											src={resolveLogoSrc(logo, { basePath }) ?? logo}
-											alt={logoLabel || logo}
-											width={40}
-											height={40}
-											className="rounded-full"
-										/>
+									<span className="flex w-full items-center justify-center">
+										<span className="relative size-10 overflow-hidden rounded-full">
+											<Image
+												src={resolveLogoSrc(logo, { basePath }) ?? logo}
+												alt={logoLabel || logo}
+												fill
+												sizes="40px"
+												className="object-contain"
+											/>
+										</span>
 									</span>
-									<span className="line-clamp-1 text-[10px] leading-tight text-muted-foreground">
+									<span className="line-clamp-1 text-xs leading-tight text-muted-foreground">
 										{logoLabel}
 									</span>
 								</button>

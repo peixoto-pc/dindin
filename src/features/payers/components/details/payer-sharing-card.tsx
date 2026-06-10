@@ -16,7 +16,7 @@ import {
 	CardTitle,
 } from "@/shared/components/ui/card";
 
-type PagadorShare = {
+type PayerShare = {
 	id: string;
 	userId: string;
 	name: string;
@@ -24,17 +24,17 @@ type PagadorShare = {
 	createdAt: string;
 };
 
-interface PagadorSharingCardProps {
+interface PayerSharingCardProps {
 	payerId: string;
 	shareCode: string;
-	shares: PagadorShare[];
+	shares: PayerShare[];
 }
 
 export function PayerSharingCard({
 	payerId,
 	shareCode,
 	shares,
-}: PagadorSharingCardProps) {
+}: PayerSharingCardProps) {
 	const router = useRouter();
 	const [currentCode, setCurrentCode] = useState(shareCode);
 	const [regeneratePending, startRegenerate] = useTransition();
@@ -84,10 +84,12 @@ export function PayerSharingCard({
 	return (
 		<Card className="border">
 			<CardHeader>
-				<CardTitle className="text-lg font-medium">Compartilhamentos</CardTitle>
+				<CardTitle className="text-lg font-semibold">
+					Compartilhamentos
+				</CardTitle>
 				<p className="text-sm text-muted-foreground">
 					Compartilhe o código abaixo com outra pessoa. Ela poderá adicioná-lo
-					na página de pagadores usando a opção Adicionar por código para ter
+					na página de pessoas usando a opção Adicionar por código para ter
 					acesso somente leitura.
 				</p>
 			</CardHeader>

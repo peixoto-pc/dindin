@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@/shared/lib/auth/config";
+import { isSignupDisabled } from "@/shared/lib/auth/signup";
 
 // Rotas protegidas que requerem autenticação
 const PROTECTED_ROUTES = [
@@ -34,21 +35,26 @@ function buildCsp(): string {
 		}
 	})();
 
-	const connectExtras = ["https://umami.felipecoutinho.com", s3Origin]
-		.filter(Boolean)
-		.join(" ");
+	const umamiOrigin = process.env.UMAMI_URL ?? "";
 
-	const imgExtras = ["https://lh3.googleusercontent.com", s3Origin]
+	const connectExtras = [umamiOrigin, s3Origin].filter(Boolean).join(" ");
+
+	const imgExtras = [
+		"https://lh3.googleusercontent.com",
+		"https://img.logo.dev",
+		s3Origin,
+	]
 		.filter(Boolean)
 		.join(" ");
 
 	return [
 		"default-src 'self'",
-		`script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://umami.felipecoutinho.com`,
+		`script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}${umamiOrigin ? ` ${umamiOrigin}` : ""}`,
 		"style-src 'self' 'unsafe-inline'",
 		`img-src 'self' ${imgExtras} data: blob:`,
 		"font-src 'self'",
 		`connect-src 'self' ${connectExtras}`,
+		`frame-src 'self'${s3Origin ? ` ${s3Origin}` : ""}`,
 		"frame-ancestors 'none'",
 	].join("; ");
 }
@@ -80,6 +86,22 @@ export default async function proxy(request: NextRequest) {
 	});
 
 	const isAuthenticated = !!session?.user;
+	const signupDisabled = isSignupDisabled();
+
+	if (signupDisabled) {
+		if (pathname === "/signup" || pathname.startsWith("/signup/")) {
+			return NextResponse.redirect(
+				new URL(isAuthenticated ? "/dashboard" : "/login", request.url),
+			);
+		}
+
+		if (pathname.startsWith("/api/auth/sign-up")) {
+			return NextResponse.json(
+				{ error: "Novos cadastros estão desativados." },
+				{ status: 403 },
+			);
+		}
+	}
 
 	// Redirect authenticated users away from login/signup pages
 	if (isAuthenticated && PUBLIC_AUTH_ROUTES.includes(pathname)) {
@@ -96,7 +118,9 @@ export default async function proxy(request: NextRequest) {
 	}
 
 	const response = NextResponse.next();
-	response.headers.set("Content-Security-Policy", buildCsp());
+	if (!pathname.startsWith("/api/")) {
+		response.headers.set("Content-Security-Policy", buildCsp());
+	}
 	return response;
 }
 

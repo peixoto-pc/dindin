@@ -1,15 +1,15 @@
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import type { Category } from "@/db/schema";
-import { fetchCategoryChartData } from "@/features/reports/category-chart-queries";
-import { fetchCategoryReport } from "@/features/reports/category-report-queries";
-import { fetchUserCategories } from "@/features/reports/category-trends-queries";
 import { CategoryReportPage } from "@/features/reports/components/category-report-page";
 import type {
 	CategoryOption,
 	FilterState,
 } from "@/features/reports/components/types";
-import { validateDateRange } from "@/features/reports/utils";
+import { fetchCategoryChartData } from "@/features/reports/lib/category-chart-queries";
+import { fetchCategoryReport } from "@/features/reports/lib/category-report-queries";
+import { fetchUserCategories } from "@/features/reports/lib/category-trends-queries";
+import { validateDateRange } from "@/features/reports/lib/utils";
 import { getUserId } from "@/shared/lib/auth/server";
 import type { CategoryReportFilters } from "@/shared/lib/types/reports";
 import { addMonthsToPeriod, getCurrentPeriod } from "@/shared/utils/period";
@@ -40,7 +40,9 @@ export default async function Page({ searchParams }: PageProps) {
 	// Extract query params
 	const inicioParam = getSingleParam(resolvedSearchParams, "inicio");
 	const fimParam = getSingleParam(resolvedSearchParams, "fim");
-	const categoriasParam = getSingleParam(resolvedSearchParams, "categories");
+	const categoriasParam =
+		getSingleParam(resolvedSearchParams, "categorias") ??
+		getSingleParam(resolvedSearchParams, "categories");
 
 	// Calculate default period (last 6 months)
 	const currentPeriod = getCurrentPeriod();

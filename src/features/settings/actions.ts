@@ -17,7 +17,9 @@ import {
 	PAYER_STATUS_OPTIONS,
 } from "@/shared/lib/payers/constants";
 import { getAdminPayerId } from "@/shared/lib/payers/get-admin-id";
+import { generateShareCode } from "@/shared/lib/payers/share-code";
 import { normalizeNameFromEmail } from "@/shared/lib/payers/utils";
+import { deleteS3Object } from "@/shared/lib/storage/presign";
 
 type ActionResponse<T = void> = {
 	success: boolean;
@@ -66,6 +68,7 @@ const updatePreferencesSchema = z.object({
 	statementNoteAsColumn: z.boolean(),
 	transactionsColumnOrder: z.array(z.string()).nullable(),
 	attachmentMaxSizeMb: z.number().int().min(1).max(100),
+	showTransactionSummary: z.boolean(),
 });
 
 type ResettableUser = {
@@ -81,9 +84,14 @@ async function resetUserAppData(
 	const payerName =
 		(user.name && user.name.trim().length > 0
 			? user.name.trim()
-			: normalizeNameFromEmail(user.email)) || "Payer principal";
+			: normalizeNameFromEmail(user.email)) || "Pessoa principal";
 	const avatarUrl = user.image ?? DEFAULT_PAYER_AVATAR;
 	const defaultPayerStatus = PAYER_STATUS_OPTIONS[0];
+
+	const userAttachments = await db
+		.select({ id: schema.attachments.id, fileKey: schema.attachments.fileKey })
+		.from(schema.attachments)
+		.where(eq(schema.attachments.userId, userId));
 
 	await db.transaction(async (tx: typeof db) => {
 		await tx
@@ -115,6 +123,9 @@ async function resetUserAppData(
 		await tx
 			.delete(schema.transactions)
 			.where(eq(schema.transactions.userId, userId));
+		await tx
+			.delete(schema.attachments)
+			.where(eq(schema.attachments.userId, userId));
 		await tx.delete(schema.invoices).where(eq(schema.invoices.userId, userId));
 		await tx.delete(schema.cards).where(eq(schema.cards.userId, userId));
 		await tx
@@ -144,9 +155,18 @@ async function resetUserAppData(
 			note: null,
 			role: PAYER_ROLE_ADMIN,
 			isAutoSend: false,
+			shareCode: generateShareCode(),
 			userId,
 		});
 	});
+
+	await Promise.all(
+		userAttachments.map((att) =>
+			deleteS3Object(att.fileKey).catch((err) => {
+				console.error("Falha ao remover anexo do S3 no reset:", err);
+			}),
+		),
+	);
 }
 
 // Actions
@@ -176,7 +196,7 @@ export async function updateNameAction(
 			.set({ name: fullName })
 			.where(eq(schema.user.id, session.user.id));
 
-		// Sincronizar nome com o pagador admin
+		// Sincronizar nome com o pessoa admin
 		if (adminPayerId) {
 			await db
 				.update(payers)
@@ -563,6 +583,7 @@ export async function updatePreferencesAction(
 					statementNoteAsColumn: validated.statementNoteAsColumn,
 					transactionsColumnOrder: validated.transactionsColumnOrder,
 					attachmentMaxSizeMb: validated.attachmentMaxSizeMb,
+					showTransactionSummary: validated.showTransactionSummary,
 					updatedAt: new Date(),
 				})
 				.where(eq(schema.userPreferences.userId, session.user.id));
@@ -573,6 +594,7 @@ export async function updatePreferencesAction(
 				statementNoteAsColumn: validated.statementNoteAsColumn,
 				transactionsColumnOrder: validated.transactionsColumnOrder,
 				attachmentMaxSizeMb: validated.attachmentMaxSizeMb,
+				showTransactionSummary: validated.showTransactionSummary,
 			});
 		}
 

@@ -44,6 +44,11 @@ import {
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import type { ImportStatement } from "@/shared/lib/import/types";
 
+const categoryGroupByTransactionType = {
+	expense: "despesa",
+	income: "receita",
+} as const;
+
 interface ImportPageProps {
 	payerOptions: SelectOption[];
 	accountOptions: SelectOption[];
@@ -69,33 +74,63 @@ export function ImportPage({
 	const [accountCardValue, setAccountCardValue] = useState<string | null>(null);
 	const [invoicePeriod, setInvoicePeriod] = useState<string | null>(null);
 
-	const handleParsed = useCallback(async (stmt: ImportStatement) => {
-		setStatement(stmt);
-		setIsChecking(true);
+	const categoryGroupById = useMemo(
+		() =>
+			new Map(categoryOptions.map((option) => [option.value, option.group])),
+		[categoryOptions],
+	);
 
-		try {
-			const fitIds = stmt.transactions
-				.map((t) => t.externalId)
-				.filter((id): id is string => id !== null);
+	const isCategoryCompatible = useCallback(
+		(
+			categoryId: string | null,
+			transactionType: ReviewRow["transactionType"],
+		) =>
+			!categoryId ||
+			categoryGroupById.get(categoryId) ===
+				categoryGroupByTransactionType[transactionType],
+		[categoryGroupById],
+	);
 
-			const [duplicates, categoryMappings] = await Promise.all([
-				checkDuplicateFitIds(fitIds).then((ids) => new Set(ids)),
-				fetchCategoryMappings(stmt.transactions.map((t) => t.description)),
-			]);
+	const handleParsed = useCallback(
+		async (stmt: ImportStatement) => {
+			setStatement(stmt);
+			setIsChecking(true);
 
-			setRows(
-				stmt.transactions.map((t) => ({
-					...t,
-					isDuplicate: t.externalId ? duplicates.has(t.externalId) : false,
-					selected: t.externalId ? !duplicates.has(t.externalId) : true,
-					categoryId:
-						categoryMappings[normalizeDescriptionKey(t.description)] ?? null,
-				})),
-			);
-		} finally {
-			setIsChecking(false);
-		}
-	}, []);
+			try {
+				const fitIds = stmt.transactions
+					.map((t) => t.externalId)
+					.filter((id): id is string => id !== null);
+
+				const [duplicates, categoryMappings] = await Promise.all([
+					checkDuplicateFitIds(fitIds).then((ids) => new Set(ids)),
+					fetchCategoryMappings(stmt.transactions.map((t) => t.description)),
+				]);
+
+				setRows(
+					stmt.transactions.map((t) => {
+						const mappedCategoryId =
+							categoryMappings[normalizeDescriptionKey(t.description)] ?? null;
+
+						return {
+							...t,
+							isDuplicate: t.externalId ? duplicates.has(t.externalId) : false,
+							selected: t.externalId ? !duplicates.has(t.externalId) : true,
+							payerId,
+							categoryId: isCategoryCompatible(
+								mappedCategoryId,
+								t.transactionType,
+							)
+								? mappedCategoryId
+								: null,
+						};
+					}),
+				);
+			} finally {
+				setIsChecking(false);
+			}
+		},
+		[isCategoryCompatible, payerId],
+	);
 
 	// Pré-seleciona cartão ou conta com base no tipo detectado no OFX
 	useEffect(() => {
@@ -121,7 +156,17 @@ export function ImportPage({
 
 	const handleCategoryChange = (index: number, categoryId: string | null) => {
 		setRows((prev) =>
-			prev.map((r, i) => (i === index ? { ...r, categoryId } : r)),
+			prev.map((r, i) =>
+				i === index && isCategoryCompatible(categoryId, r.transactionType)
+					? { ...r, categoryId }
+					: r,
+			),
+		);
+	};
+
+	const handlePayerChange = (index: number, payerId: string | null) => {
+		setRows((prev) =>
+			prev.map((r, i) => (i === index ? { ...r, payerId } : r)),
 		);
 	};
 
@@ -150,28 +195,48 @@ export function ImportPage({
 	};
 
 	const handleBulkCategoryChange = (categoryId: string) => {
-		setRows((prev) => prev.map((r) => (r.selected ? { ...r, categoryId } : r)));
+		setRows((prev) =>
+			prev.map((r) =>
+				r.selected && isCategoryCompatible(categoryId, r.transactionType)
+					? { ...r, categoryId }
+					: r,
+			),
+		);
+	};
+
+	const handleBulkPayerChange = (nextPayerId: string | null) => {
+		setPayerId(nextPayerId);
+		setRows((prev) =>
+			prev.map((r) => (r.selected ? { ...r, payerId: nextPayerId } : r)),
+		);
 	};
 
 	const isCard = accountCardValue?.startsWith("card:") ?? false;
 
-	const { selectedRows, duplicateCount, uncategorizedCount, selectedTotal } =
-		useMemo(() => {
-			const selected = rows.filter((r) => r.selected);
-			return {
-				selectedRows: selected,
-				duplicateCount: rows.filter((r) => r.isDuplicate).length,
-				uncategorizedCount: selected.filter((r) => !r.categoryId).length,
-				selectedTotal: selected
-					.filter((r) => r.transactionType === "expense")
-					.reduce((sum, r) => sum + r.amount, 0),
-			};
-		}, [rows]);
+	const {
+		selectedRows,
+		duplicateCount,
+		uncategorizedCount,
+		withoutPayerCount,
+		selectedTotal,
+	} = useMemo(() => {
+		const selected = rows.filter((r) => r.selected);
+		return {
+			selectedRows: selected,
+			duplicateCount: rows.filter((r) => r.isDuplicate).length,
+			uncategorizedCount: selected.filter((r) => !r.categoryId).length,
+			withoutPayerCount: selected.filter((r) => !r.payerId).length,
+			selectedTotal: selected
+				.filter((r) => r.transactionType === "expense")
+				.reduce((sum, r) => sum + r.amount, 0),
+		};
+	}, [rows]);
 
 	const canImport =
 		selectedRows.length > 0 &&
 		!!accountCardValue &&
 		uncategorizedCount === 0 &&
+		withoutPayerCount === 0 &&
 		(!isCard || !!invoicePeriod) &&
 		!isPending;
 
@@ -195,6 +260,7 @@ export function ImportPage({
 					description: r.description,
 					transactionType: r.transactionType,
 					categoryId: r.categoryId,
+					payerId: r.payerId,
 				})),
 				payerId,
 				accountId,
@@ -285,6 +351,7 @@ export function ImportPage({
 								duplicates={duplicateCount}
 								uncategorized={uncategorizedCount}
 								selectedTotal={selectedTotal}
+								withoutPayer={withoutPayerCount}
 							/>
 
 							<GlobalFields
@@ -296,23 +363,25 @@ export function ImportPage({
 								payerId={payerId}
 								invoicePeriod={invoicePeriod}
 								onAccountCardChange={setAccountCardValue}
-								onPayerChange={setPayerId}
+								onPayerChange={handleBulkPayerChange}
 								onInvoicePeriodChange={setInvoicePeriod}
 								onBulkCategoryChange={handleBulkCategoryChange}
 							/>
 
 							<ReviewTable
 								rows={rows}
+								payerOptions={payerOptions}
 								categoryOptions={categoryOptions}
 								onToggle={toggleRow}
 								onToggleAll={toggleAll}
+								onPayerChange={handlePayerChange}
 								onCategoryChange={handleCategoryChange}
 								onDescriptionChange={handleDescriptionChange}
 								onUndoDuplicate={handleUndoDuplicate}
 							/>
 
 							{/* Sticky footer */}
-							<div className="sticky bottom-0 -mx-6 border-t bg-background px-6 py-4">
+							<div className="sticky bottom-0 -mx-6 px-6">
 								<div className="flex items-center justify-between gap-4">
 									<Button
 										variant="outline"

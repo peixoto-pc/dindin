@@ -1,11 +1,11 @@
 "use client";
 
 import { RiFireLine, RiTrophyLine } from "@remixicon/react";
-import type { TopEstabelecimentosData } from "@/features/reports/establishments/queries";
+import type { TopEstablishmentsData } from "@/features/reports/establishments/queries";
 import { Card, CardContent } from "@/shared/components/ui/card";
 
 type HighlightsCardsProps = {
-	summary: TopEstabelecimentosData["summary"];
+	summary: TopEstablishmentsData["summary"];
 };
 
 export function HighlightsCards({ summary }: HighlightsCardsProps) {
@@ -19,7 +19,7 @@ export function HighlightsCards({ summary }: HighlightsCardsProps) {
 						</div>
 						<div className="min-w-0 flex-1">
 							<p className="text-xs font-medium">Mais Frequente</p>
-							<p className="font-medium text-2xl truncate">
+							<p className="font-semibold text-2xl truncate">
 								{summary.mostFrequent || "—"}
 							</p>
 						</div>
@@ -35,7 +35,7 @@ export function HighlightsCards({ summary }: HighlightsCardsProps) {
 						</div>
 						<div className="min-w-0 flex-1">
 							<p className="text-xs font-medium">Maior Gasto Total</p>
-							<p className="font-medium text-2xl truncate">
+							<p className="font-semibold text-2xl truncate">
 								{summary.highestSpending || "—"}
 							</p>
 						</div>

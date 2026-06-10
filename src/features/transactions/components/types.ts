@@ -33,6 +33,7 @@ export type TransactionItem = {
 	isAnticipated: boolean;
 	anticipationId: string | null;
 	seriesId: string | null;
+	splitGroupId: string | null;
 	hasAttachments: boolean;
 	readonly?: boolean;
 };
@@ -56,6 +57,7 @@ export type TransactionFilterOption = {
 	label: string;
 	icon?: string | null;
 	avatarUrl?: string | null;
+	type?: string | null;
 };
 
 export type AccountCardFilterOption = TransactionFilterOption & {

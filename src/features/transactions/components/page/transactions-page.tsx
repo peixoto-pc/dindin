@@ -1,5 +1,6 @@
 "use client";
 
+import { RiAddFill } from "@remixicon/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -8,7 +9,9 @@ import {
 	deleteTransactionAction,
 	deleteTransactionBulkAction,
 	toggleTransactionSettlementAction,
+	updateTransactionAction,
 	updateTransactionBulkAction,
+	updateTransactionSplitPairAction,
 } from "@/features/transactions/actions";
 import {
 	confirmAttachmentUploadAction,
@@ -16,10 +19,11 @@ import {
 	getPresignedUploadUrlAction,
 } from "@/features/transactions/actions/attachments";
 import { ConfirmActionDialog } from "@/shared/components/confirm-action-dialog";
+import { Button } from "@/shared/components/ui/button";
 import type {
 	TransactionsExportContext,
 	TransactionsPaginationState,
-} from "../../export-types";
+} from "../../lib/export-types";
 import { AnticipateInstallmentsDialog } from "../dialogs/anticipate-installments-dialog/anticipate-installments-dialog";
 import { AnticipationHistoryDialog } from "../dialogs/anticipate-installments-dialog/anticipation-history-dialog";
 import {
@@ -31,6 +35,11 @@ import {
 	MassAddDialog,
 	type MassAddFormData,
 } from "../dialogs/mass-add-dialog";
+import { RefundTransactionDialog } from "../dialogs/refund-transaction-dialog";
+import {
+	SplitPairDialog,
+	type SplitPairScope,
+} from "../dialogs/split-pair-dialog";
 import { TransactionDetailsDialog } from "../dialogs/transaction-details-dialog";
 import { TransactionDialog } from "../dialogs/transaction-dialog/transaction-dialog";
 import { TransactionsTable } from "../table/transactions-table";
@@ -54,6 +63,7 @@ interface TransactionsPageProps {
 	categoryFilterOptions: TransactionFilterOption[];
 	accountCardFilterOptions: AccountCardFilterOption[];
 	selectedPeriod: string;
+	defaultAccountId?: string | null;
 	estabelecimentos: string[];
 	allowCreate?: boolean;
 	noteAsColumn?: boolean;
@@ -87,6 +97,7 @@ export function TransactionsPage({
 	categoryFilterOptions,
 	accountCardFilterOptions,
 	selectedPeriod,
+	defaultAccountId,
 	estabelecimentos,
 	allowCreate = true,
 	noteAsColumn = false,
@@ -108,7 +119,6 @@ export function TransactionsPage({
 	const [selectedTransaction, setSelectedTransaction] =
 		useState<TransactionItem | null>(null);
 	const [editOpen, setEditOpen] = useState(false);
-	const [createOpen, setCreateOpen] = useState(false);
 	const [copyOpen, setCopyOpen] = useState(false);
 	const [transactionToCopy, setTransactionToCopy] =
 		useState<TransactionItem | null>(null);
@@ -125,6 +135,26 @@ export function TransactionsPage({
 	);
 	const [bulkEditOpen, setBulkEditOpen] = useState(false);
 	const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+	const [pendingSplitEditData, setPendingSplitEditData] = useState<{
+		id: string;
+		name: string;
+		purchaseDate: string;
+		period: string;
+		transactionType: string;
+		amount: number;
+		condition: string;
+		paymentMethod: string;
+		payerId: string | undefined;
+		accountId: string | undefined;
+		cardId: string | undefined;
+		categoryId: string | undefined;
+		note: string;
+		isSettled: boolean | null;
+		dueDate: string | null;
+		boletoPaymentDate: string | null;
+		pendingDetachIds: string[];
+		pendingUploadFiles: File[];
+	} | null>(null);
 	const [pendingEditData, setPendingEditData] = useState<{
 		id: string;
 		purchaseDate: string;
@@ -157,6 +187,9 @@ export function TransactionsPage({
 	const [transactionsToImport, setTransactionsToImport] = useState<
 		TransactionItem[]
 	>([]);
+	const [refundOpen, setRefundOpen] = useState(false);
+	const [transactionToRefund, setTransactionToRefund] =
+		useState<TransactionItem | null>(null);
 
 	const handleToggleSettlement = async (item: TransactionItem) => {
 		if (item.paymentMethod === "Cartão de crédito") {
@@ -381,17 +414,92 @@ export function TransactionsPage({
 		setPendingMultipleDeleteData([]);
 	};
 
-	const [transactionTypeForCreate, setTransactionTypeForCreate] = useState<
-		"Despesa" | "Receita" | null
-	>(null);
-
-	const handleCreate = (type: "Despesa" | "Receita") => {
-		setTransactionTypeForCreate(type);
-		setCreateOpen(true);
-	};
-
 	const handleMassAdd = () => {
 		setMassAddOpen(true);
+	};
+
+	const handleSplitEditRequest = (
+		data: NonNullable<typeof pendingSplitEditData>,
+	) => {
+		setPendingSplitEditData(data);
+		setEditOpen(false);
+	};
+
+	const handleSplitEdit = async (scope: SplitPairScope) => {
+		if (!pendingSplitEditData) {
+			return;
+		}
+
+		const payload = {
+			id: pendingSplitEditData.id,
+			name: pendingSplitEditData.name,
+			purchaseDate: pendingSplitEditData.purchaseDate,
+			period: pendingSplitEditData.period,
+			transactionType: pendingSplitEditData.transactionType as Parameters<
+				typeof updateTransactionAction
+			>[0]["transactionType"],
+			amount: pendingSplitEditData.amount,
+			condition: pendingSplitEditData.condition as Parameters<
+				typeof updateTransactionAction
+			>[0]["condition"],
+			paymentMethod: pendingSplitEditData.paymentMethod as Parameters<
+				typeof updateTransactionAction
+			>[0]["paymentMethod"],
+			payerId: pendingSplitEditData.payerId ?? null,
+			accountId: pendingSplitEditData.accountId ?? null,
+			cardId: pendingSplitEditData.cardId ?? null,
+			categoryId: pendingSplitEditData.categoryId ?? null,
+			note: pendingSplitEditData.note,
+			isSettled: pendingSplitEditData.isSettled,
+			dueDate: pendingSplitEditData.dueDate ?? undefined,
+			boletoPaymentDate: pendingSplitEditData.boletoPaymentDate ?? undefined,
+			isSplit: false,
+		};
+
+		const action =
+			scope === "both"
+				? updateTransactionSplitPairAction
+				: updateTransactionAction;
+		const result = await action(payload);
+
+		if (!result.success) {
+			toast.error(result.error);
+			throw new Error(result.error);
+		}
+
+		await Promise.all(
+			pendingSplitEditData.pendingDetachIds.map((attachmentId) =>
+				detachAttachmentBulkAction({
+					attachmentId,
+					transactionId: pendingSplitEditData.id,
+					scope: "current",
+				}),
+			),
+		);
+
+		await Promise.all(
+			pendingSplitEditData.pendingUploadFiles.map(async (file) => {
+				const presign = await getPresignedUploadUrlAction({
+					fileName: file.name,
+					mimeType: file.type,
+					fileSize: file.size,
+					transactionId: pendingSplitEditData.id,
+				});
+				if (!presign.success) return;
+				await fetch(presign.presignedUrl, {
+					method: "PUT",
+					body: file,
+					headers: { "Content-Type": file.type },
+				});
+				await confirmAttachmentUploadAction({
+					uploadToken: presign.uploadToken,
+					scope: "current",
+				});
+			}),
+		);
+
+		toast.success(result.message);
+		setPendingSplitEditData(null);
 	};
 
 	const handleEdit = (item: TransactionItem) => {
@@ -429,6 +537,11 @@ export function TransactionsPage({
 		setDetailsOpen(true);
 	};
 
+	const handleRefund = (item: TransactionItem) => {
+		setTransactionToRefund(item);
+		setRefundOpen(true);
+	};
+
 	const handleAnticipate = (item: TransactionItem) => {
 		setSelectedForAnticipation(item);
 		setAnticipateOpen(true);
@@ -438,6 +551,59 @@ export function TransactionsPage({
 		setSelectedForAnticipation(item);
 		setAnticipationHistoryOpen(true);
 	};
+
+	const createSlot = allowCreate ? (
+		<>
+			<TransactionDialog
+				mode="create"
+				payerOptions={payerOptions}
+				splitPayerOptions={splitPayerOptions}
+				defaultPayerId={defaultPayerId}
+				accountOptions={accountOptions}
+				cardOptions={cardOptions}
+				categoryOptions={categoryOptions}
+				estabelecimentos={estabelecimentos}
+				defaultPeriod={selectedPeriod}
+				defaultAccountId={defaultAccountId}
+				defaultCardId={defaultCardId}
+				defaultPaymentMethod={defaultPaymentMethod}
+				lockCardSelection={lockCardSelection}
+				lockPaymentMethod={lockPaymentMethod}
+				defaultTransactionType="Receita"
+				maxSizeMb={attachmentMaxSizeMb}
+				trigger={
+					<Button className="w-full sm:w-auto">
+						<RiAddFill className="size-4" />
+						Nova Receita
+					</Button>
+				}
+			/>
+			<TransactionDialog
+				mode="create"
+				payerOptions={payerOptions}
+				splitPayerOptions={splitPayerOptions}
+				defaultPayerId={defaultPayerId}
+				accountOptions={accountOptions}
+				cardOptions={cardOptions}
+				categoryOptions={categoryOptions}
+				estabelecimentos={estabelecimentos}
+				defaultPeriod={selectedPeriod}
+				defaultAccountId={defaultAccountId}
+				defaultCardId={defaultCardId}
+				defaultPaymentMethod={defaultPaymentMethod}
+				lockCardSelection={lockCardSelection}
+				lockPaymentMethod={lockPaymentMethod}
+				defaultTransactionType="Despesa"
+				maxSizeMb={attachmentMaxSizeMb}
+				trigger={
+					<Button className="w-full sm:w-auto">
+						<RiAddFill className="size-4" />
+						Nova Despesa
+					</Button>
+				}
+			/>
+		</>
+	) : null;
 
 	return (
 		<>
@@ -452,7 +618,7 @@ export function TransactionsPage({
 				selectedPeriod={selectedPeriod}
 				pagination={pagination}
 				exportContext={exportContext}
-				onCreate={allowCreate ? handleCreate : undefined}
+				createSlot={createSlot}
 				onMassAdd={allowCreate ? handleMassAdd : undefined}
 				onEdit={handleEdit}
 				onCopy={handleCopy}
@@ -461,33 +627,12 @@ export function TransactionsPage({
 				onBulkDelete={handleMultipleBulkDelete}
 				onBulkImport={handleBulkImport}
 				onViewDetails={handleViewDetails}
+				onRefund={handleRefund}
 				onToggleSettlement={handleToggleSettlement}
 				onAnticipate={handleAnticipate}
 				onViewAnticipationHistory={handleViewAnticipationHistory}
 				isSettlementLoading={(id) => settlementLoadingId === id}
 			/>
-
-			{allowCreate ? (
-				<TransactionDialog
-					mode="create"
-					open={createOpen}
-					onOpenChange={setCreateOpen}
-					payerOptions={payerOptions}
-					splitPayerOptions={splitPayerOptions}
-					defaultPayerId={defaultPayerId}
-					accountOptions={accountOptions}
-					cardOptions={cardOptions}
-					categoryOptions={categoryOptions}
-					estabelecimentos={estabelecimentos}
-					defaultPeriod={selectedPeriod}
-					defaultCardId={defaultCardId}
-					defaultPaymentMethod={defaultPaymentMethod}
-					lockCardSelection={lockCardSelection}
-					lockPaymentMethod={lockPaymentMethod}
-					defaultTransactionType={transactionTypeForCreate ?? undefined}
-					maxSizeMb={attachmentMaxSizeMb}
-				/>
-			) : null}
 
 			<TransactionDialog
 				mode="create"
@@ -507,6 +652,7 @@ export function TransactionsPage({
 				estabelecimentos={estabelecimentos}
 				transaction={transactionToCopy ?? undefined}
 				defaultPeriod={selectedPeriod}
+				defaultAccountId={defaultAccountId}
 				maxSizeMb={attachmentMaxSizeMb}
 			/>
 
@@ -528,6 +674,7 @@ export function TransactionsPage({
 				estabelecimentos={estabelecimentos}
 				transaction={transactionToImport ?? undefined}
 				defaultPeriod={selectedPeriod}
+				defaultAccountId={defaultAccountId}
 				isImporting={true}
 				maxSizeMb={attachmentMaxSizeMb}
 			/>
@@ -556,7 +703,9 @@ export function TransactionsPage({
 				estabelecimentos={estabelecimentos}
 				transaction={selectedTransaction ?? undefined}
 				defaultPeriod={selectedPeriod}
+				defaultAccountId={defaultAccountId}
 				onBulkEditRequest={handleBulkEditRequest}
+				onSplitEditRequest={handleSplitEditRequest}
 				maxSizeMb={attachmentMaxSizeMb}
 			/>
 
@@ -570,6 +719,18 @@ export function TransactionsPage({
 				}}
 				transaction={detailsOpen ? selectedTransaction : null}
 				onEdit={handleEdit}
+			/>
+
+			<RefundTransactionDialog
+				open={refundOpen && !!transactionToRefund}
+				onOpenChange={(open) => {
+					setRefundOpen(open);
+					if (!open) {
+						setTransactionToRefund(null);
+					}
+				}}
+				transaction={transactionToRefund}
+				cardOptions={cardOptions}
 			/>
 
 			<ConfirmActionDialog
@@ -624,6 +785,14 @@ export function TransactionsPage({
 					undefined
 				}
 				onConfirm={handleBulkEdit}
+			/>
+
+			<SplitPairDialog
+				open={pendingSplitEditData !== null}
+				onOpenChange={(open) => {
+					if (!open) setPendingSplitEditData(null);
+				}}
+				onConfirm={handleSplitEdit}
 			/>
 
 			{allowCreate && massAddOpen ? (
@@ -682,16 +851,6 @@ export function TransactionsPage({
 					onOpenChange={setAnticipationHistoryOpen}
 					seriesId={selectedForAnticipation.seriesId as string}
 					lancamentoName={selectedForAnticipation.name}
-					onViewLancamento={(transactionId) => {
-						const transaction = transactionList.find(
-							(l) => l.id === transactionId,
-						);
-						if (transaction) {
-							setSelectedTransaction(transaction);
-							setDetailsOpen(true);
-							setAnticipationHistoryOpen(false);
-						}
-					}}
 				/>
 			)}
 		</>

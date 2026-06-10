@@ -12,6 +12,14 @@ export type CalendarEvent =
 	  }
 	| {
 			id: string;
+			type: "installment";
+			date: string;
+			transaction: TransactionItem;
+			installmentCount: number;
+			installmentValue: number;
+	  }
+	| {
+			id: string;
 			type: "boleto";
 			date: string;
 			transaction: TransactionItem;
@@ -29,6 +37,8 @@ export type CalendarEvent =
 				status: string;
 				logo: string | null;
 				totalDue: number | null;
+				isPaid: boolean;
+				paymentDate: string | null;
 			};
 	  };
 

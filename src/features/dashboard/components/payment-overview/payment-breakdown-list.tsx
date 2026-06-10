@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { WidgetEmptyState } from "@/shared/components/widget-empty-state";
+import { WidgetEmptyState } from "@/shared/components/widgets/widget-empty-state";
 import {
 	PaymentBreakdownListItem,
 	type PaymentBreakdownListItemData,
@@ -31,10 +31,14 @@ export function PaymentBreakdownList({
 	}
 
 	return (
-		<div className="flex flex-col gap-4 px-0">
+		<div className="flex flex-col px-0">
 			<ul className="flex flex-col gap-2">
-				{items.map((item) => (
-					<PaymentBreakdownListItem key={item.id} item={item} />
+				{items.map((item, index) => (
+					<PaymentBreakdownListItem
+						key={item.id}
+						item={item}
+						position={index + 1}
+					/>
 				))}
 			</ul>
 		</div>

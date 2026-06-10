@@ -3,11 +3,12 @@
 import { RiAddLine, RiDeleteBinLine } from "@remixicon/react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { groupAndSortCategories } from "@/features/transactions/category-helpers";
+import { groupAndSortCategories } from "@/features/transactions/lib/category-helpers";
 import {
 	PAYMENT_METHODS,
 	type TRANSACTION_TYPES,
-} from "@/features/transactions/constants";
+} from "@/features/transactions/lib/constants";
+import { ConfirmActionDialog } from "@/shared/components/confirm-action-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { CurrencyInput } from "@/shared/components/ui/currency-input";
 import { DatePicker } from "@/shared/components/ui/date-picker";
@@ -51,7 +52,7 @@ import {
 	PaymentMethodSelectContent,
 	TransactionTypeSelectContent,
 } from "../select-items";
-import { EstabelecimentoInput } from "../shared/establishment-input";
+import { EstablishmentInput } from "../shared/establishment-input";
 import type { SelectOption } from "../types";
 
 /** Payment methods sem Boleto para este modal */
@@ -123,10 +124,11 @@ interface TransactionRow {
 
 function createEmptyTransactionRow(
 	defaultPayerId?: string | null,
+	lastPurchaseDate?: string,
 ): TransactionRow {
 	return {
 		id: createClientSafeId(),
-		purchaseDate: getTodayDateString(),
+		purchaseDate: lastPurchaseDate ?? getTodayDateString(),
 		name: "",
 		amount: "",
 		categoryId: undefined,
@@ -148,6 +150,9 @@ export function MassAddDialog({
 	defaultCardId,
 }: MassAddDialogProps) {
 	const [loading, setLoading] = useState(false);
+	const [isDirty, setIsDirty] = useState(false);
+	const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+	const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
 
 	// Fixed fields state (sempre ativos, sem checkboxes)
 	const [transactionType, setTransactionType] =
@@ -179,11 +184,23 @@ export function MassAddDialog({
 		return groupAndSortCategories(filtered);
 	}, [categoryOptions, transactionType]);
 
+	const resetForm = () => {
+		setTransactionType("Despesa");
+		setPaymentMethod(PAYMENT_METHODS[0]);
+		setPeriod(selectedPeriod);
+		setContaId(undefined);
+		setCartaoId(defaultCardId ?? undefined);
+		setTransactions([createEmptyTransactionRow(defaultPayerId)]);
+		setIsDirty(false);
+	};
+
 	const addTransaction = () => {
+		const lastTransaction = transactions[transactions.length - 1];
 		setTransactions([
 			...transactions,
-			createEmptyTransactionRow(defaultPayerId),
+			createEmptyTransactionRow(defaultPayerId, lastTransaction?.purchaseDate),
 		]);
+		setIsDirty(true);
 	};
 
 	const removeTransaction = (id: string) => {
@@ -192,6 +209,7 @@ export function MassAddDialog({
 			return;
 		}
 		setTransactions(transactions.filter((t) => t.id !== id));
+		setIsDirty(true);
 	};
 
 	const updateTransaction = (
@@ -202,6 +220,7 @@ export function MassAddDialog({
 		setTransactions(
 			transactions.map((t) => (t.id === id ? { ...t, [field]: value } : t)),
 		);
+		setIsDirty(true);
 	};
 
 	const handleSubmit = async () => {
@@ -250,13 +269,7 @@ export function MassAddDialog({
 		try {
 			await onSubmit(formData);
 			onOpenChange(false);
-			// Reset form
-			setTransactionType("Despesa");
-			setPaymentMethod(PAYMENT_METHODS[0]);
-			setPeriod(selectedPeriod);
-			setContaId(undefined);
-			setCartaoId(defaultCardId ?? undefined);
-			setTransactions([createEmptyTransactionRow(defaultPayerId)]);
+			resetForm();
 		} catch (_error) {
 			// Error is handled by the onSubmit function
 		} finally {
@@ -265,7 +278,19 @@ export function MassAddDialog({
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog
+			open={open}
+			onOpenChange={(newOpen) => {
+				if (!newOpen && isDirty) {
+					setConfirmCloseOpen(true);
+				} else {
+					onOpenChange(newOpen);
+					if (newOpen === false) {
+						resetForm();
+					}
+				}
+			}}
+		>
 			<DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-6 sm:px-8">
 				<DialogHeader>
 					<DialogTitle>Adicionar múltiplos lançamentos</DialogTitle>
@@ -279,16 +304,17 @@ export function MassAddDialog({
 				<div className="space-y-4">
 					{/* Fixed Fields Section */}
 					<div className="space-y-4">
-						<h3 className="text-sm font-medium">Valores Padrão</h3>
+						<h3 className="text-sm font-semibold">Valores Padrão</h3>
 						<div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
 							{/* Transaction Type */}
 							<div className="space-y-2">
 								<Label htmlFor="transaction-type">Tipo de Transação</Label>
 								<Select
 									value={transactionType}
-									onValueChange={(value) =>
-										setTransactionType(value as MassAddTransactionType)
-									}
+									onValueChange={(value) => {
+										setTransactionType(value as MassAddTransactionType);
+										setIsDirty(true);
+									}}
 								>
 									<SelectTrigger id="transaction-type" className="w-full">
 										<SelectValue>
@@ -315,6 +341,7 @@ export function MassAddDialog({
 									value={paymentMethod}
 									onValueChange={(value) => {
 										setPaymentMethod(value as MassAddPaymentMethod);
+										setIsDirty(true);
 										// Reset conta/cartao when changing payment method
 										if (value === "Cartão de crédito") {
 											setContaId(undefined);
@@ -346,7 +373,10 @@ export function MassAddDialog({
 									<Label htmlFor="cartao">Cartão</Label>
 									<Select
 										value={cardId}
-										onValueChange={setCartaoId}
+										onValueChange={(value) => {
+											setCartaoId(value);
+											setIsDirty(true);
+										}}
 										disabled={isLockedToCartao}
 									>
 										<SelectTrigger id="cartao" className="w-full">
@@ -395,7 +425,10 @@ export function MassAddDialog({
 									{cardId ? (
 										<InlinePeriodPicker
 											period={period}
-											onPeriodChange={setPeriod}
+											onPeriodChange={(value) => {
+												setPeriod(value);
+												setIsDirty(true);
+											}}
 										/>
 									) : null}
 								</div>
@@ -405,7 +438,13 @@ export function MassAddDialog({
 							{!isCartaoSelected ? (
 								<div className="space-y-2">
 									<Label htmlFor="conta">Conta</Label>
-									<Select value={accountId} onValueChange={setContaId}>
+									<Select
+										value={accountId}
+										onValueChange={(value) => {
+											setContaId(value);
+											setIsDirty(true);
+										}}
+									>
 										<SelectTrigger id="conta" className="w-full">
 											<SelectValue placeholder="Selecione">
 												{accountId &&
@@ -452,7 +491,7 @@ export function MassAddDialog({
 
 					{/* Transactions Section */}
 					<div className="space-y-4">
-						<h3 className="text-sm font-medium">Lançamentos</h3>
+						<h3 className="text-sm font-semibold">Lançamentos</h3>
 
 						<div className="space-y-3">
 							{transactions.map((transaction, index) => (
@@ -490,7 +529,7 @@ export function MassAddDialog({
 											>
 												Estabelecimento {index + 1}
 											</Label>
-											<EstabelecimentoInput
+											<EstablishmentInput
 												id={`name-${transaction.id}`}
 												placeholder="Local"
 												value={transaction.name}
@@ -525,7 +564,7 @@ export function MassAddDialog({
 												htmlFor={`pagador-${transaction.id}`}
 												className="sr-only"
 											>
-												Pagador {index + 1}
+												Pessoa {index + 1}
 											</Label>
 											<Select
 												value={transaction.payerId}
@@ -537,7 +576,7 @@ export function MassAddDialog({
 													id={`pagador-${transaction.id}`}
 													className="w-32 truncate"
 												>
-													<SelectValue placeholder="Pagador">
+													<SelectValue placeholder="Pessoa">
 														{transaction.payerId &&
 															(() => {
 																const selectedOption = payerOptions.find(
@@ -635,17 +674,53 @@ export function MassAddDialog({
 				<DialogFooter>
 					<Button
 						variant="outline"
-						onClick={() => onOpenChange(false)}
+						onClick={() => {
+							if (isDirty) {
+								setCancelConfirmOpen(true);
+							} else {
+								onOpenChange(false);
+							}
+						}}
 						disabled={loading}
 					>
 						Cancelar
 					</Button>
 					<Button onClick={handleSubmit} disabled={loading}>
 						{loading && <Spinner className="size-4" />}
-						Criar {transactions.length}{" "}
+						Salvar {transactions.length}{" "}
 						{transactions.length === 1 ? "lançamento" : "lançamentos"}
 					</Button>
 				</DialogFooter>
+
+				<ConfirmActionDialog
+					open={confirmCloseOpen}
+					onOpenChange={setConfirmCloseOpen}
+					title="Descartar alterações?"
+					description="Há lançamentos não salvos. Se fechar agora, todos os dados serão perdidos."
+					confirmLabel="Descartar"
+					cancelLabel="Continuar editando"
+					confirmVariant="destructive"
+					onConfirm={() => {
+						setConfirmCloseOpen(false);
+						onOpenChange(false);
+						resetForm();
+					}}
+				/>
+
+				<ConfirmActionDialog
+					open={cancelConfirmOpen}
+					onOpenChange={setCancelConfirmOpen}
+					title="Cancelar adição de lançamentos?"
+					description="Há lançamentos não salvos. Se cancelar, todos os dados serão perdidos."
+					confirmLabel="Cancelar"
+					cancelLabel="Continuar editando"
+					confirmVariant="destructive"
+					onConfirm={() => {
+						setCancelConfirmOpen(false);
+						onOpenChange(false);
+						resetForm();
+					}}
+				/>
 			</DialogContent>
 		</Dialog>
 	);

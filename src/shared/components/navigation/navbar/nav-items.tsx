@@ -26,7 +26,19 @@ export type NavItem = {
 	hideOnMobile?: boolean;
 };
 
-export type NavSection = {
+export type NavbarEntityLink = {
+	id: string;
+	name: string;
+	logo: string | null;
+	amount: number;
+};
+
+export type NavbarFinanceLinks = {
+	cards: NavbarEntityLink[];
+	accounts: NavbarEntityLink[];
+};
+
+type NavSection = {
 	label: string;
 	items: NavItem[];
 };
@@ -37,7 +49,7 @@ export const NAV_SECTIONS: NavSection[] = [
 		items: [
 			{
 				href: "/transactions",
-				label: "lançamentos",
+				label: "Lançamentos",
 				description: "Registre e gerencie suas transações",
 				icon: <RiArrowLeftRightLine className="size-4" />,
 				iconClass: "text-primary",
@@ -45,14 +57,14 @@ export const NAV_SECTIONS: NavSection[] = [
 			},
 			{
 				href: "/inbox",
-				label: "pré-lançamentos",
+				label: "Pré-lançamentos",
 				description: "Notificações capturadas pelo Companion",
 				icon: <RiAtLine className="size-4" />,
 				iconClass: "text-primary",
 			},
 			{
 				href: "/calendar",
-				label: "calendário",
+				label: "Calendário",
 				description: "Visualize lançamentos por dia",
 				icon: <RiCalendarEventLine className="size-4" />,
 				iconClass: "text-primary",
@@ -65,21 +77,21 @@ export const NAV_SECTIONS: NavSection[] = [
 		items: [
 			{
 				href: "/cards",
-				label: "cartões",
+				label: "Cartões",
 				description: "Faturas e limites dos seus cartões",
 				icon: <RiBankCard2Line className="size-4" />,
 				iconClass: "text-primary",
 			},
 			{
 				href: "/accounts",
-				label: "contas",
+				label: "Contas",
 				description: "Saldos e extratos bancários",
 				icon: <RiBankLine className="size-4" />,
 				iconClass: "text-primary",
 			},
 			{
 				href: "/budgets",
-				label: "orçamentos",
+				label: "Orçamentos",
 				description: "Defina limites de gastos por categoria",
 				icon: <RiBarChart2Line className="size-4" />,
 				iconClass: "text-primary",
@@ -92,28 +104,28 @@ export const NAV_SECTIONS: NavSection[] = [
 		items: [
 			{
 				href: "/payers",
-				label: "pagadores",
+				label: "Pessoas",
 				description: "Gerencie quem divide as despesas",
 				icon: <RiGroupLine className="size-4" />,
 				iconClass: "text-primary",
 			},
 			{
 				href: "/categories",
-				label: "categorias",
+				label: "Categorias",
 				description: "Agrupe seus lançamentos",
 				icon: <RiPriceTag3Line className="size-4" />,
 				iconClass: "text-primary",
 			},
 			{
 				href: "/notes",
-				label: "anotações",
+				label: "Anotações",
 				description: "Guarde lembretes e observações",
 				icon: <RiTodoLine className="size-4" />,
 				iconClass: "text-primary",
 			},
 			{
 				href: "/attachments",
-				label: "anexos",
+				label: "Anexos",
 				description: "Comprovantes e documentos",
 				icon: <RiAttachmentLine className="size-4" />,
 				iconClass: "text-primary",
@@ -126,7 +138,7 @@ export const NAV_SECTIONS: NavSection[] = [
 		items: [
 			{
 				href: "/insights",
-				label: "insights",
+				label: "Insights",
 				description: "Análises inteligentes dos seus dados",
 				icon: <RiSparklingLine className="size-4" />,
 				iconClass: "text-primary",
@@ -134,14 +146,14 @@ export const NAV_SECTIONS: NavSection[] = [
 			},
 			{
 				href: "/reports/category-trends",
-				label: "tendências",
+				label: "Tendências",
 				description: "Evolução de gastos por categoria",
 				icon: <RiFileChartLine className="size-4" />,
 				iconClass: "text-primary",
 			},
 			{
 				href: "/reports/card-usage",
-				label: "uso de cartões",
+				label: "Uso de cartões",
 				description: "Resumo de gastos por cartão",
 				icon: <RiBankCard2Line className="size-4" />,
 				iconClass: "text-primary",
@@ -149,14 +161,14 @@ export const NAV_SECTIONS: NavSection[] = [
 			},
 			{
 				href: "/reports/installment-analysis",
-				label: "análise de parcelas",
+				label: "Análise de parcelas",
 				description: "Acompanhe parcelas em aberto",
 				icon: <RiSecurePaymentLine className="size-4" />,
 				iconClass: "text-primary",
 			},
 			{
 				href: "/reports/establishments",
-				label: "estabelecimentos",
+				label: "Estabelecimentos",
 				description: "Top gastos por estabelecimento",
 				icon: <RiStore2Line className="size-4" />,
 				iconClass: "text-primary",

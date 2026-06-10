@@ -1,11 +1,13 @@
 import { cacheLife, cacheTag } from "next/cache";
-import { fetchDashboardAccounts } from "./accounts-queries";
-import { fetchDashboardCategoryOverview } from "./category-overview-queries";
-import { fetchDashboardCurrentPeriodOverview } from "./current-period-overview-queries";
-import { fetchDashboardInvoices } from "./invoices-queries";
-import { fetchDashboardNotes } from "./notes-queries";
-import { fetchDashboardPayers } from "./payers-queries";
-import { fetchDashboardPeriodOverview } from "./period-overview-queries";
+import { fetchAttachmentsForPeriod } from "@/features/attachments/queries";
+import { fetchDashboardCategoryOverview } from "./categories/category-overview-queries";
+import { fetchDashboardInvoices } from "./invoices/invoices-queries";
+import { fetchDashboardAccounts } from "./lib/accounts-queries";
+import { fetchDashboardInboxSnapshot } from "./lib/inbox-snapshot-queries";
+import { fetchDashboardPayers } from "./lib/payers-queries";
+import { fetchDashboardNotes } from "./notes/notes-queries";
+import { fetchDashboardCurrentPeriodOverview } from "./overview/current-period-overview-queries";
+import { fetchDashboardPeriodOverview } from "./overview/period-overview-queries";
 
 async function fetchDashboardDataInternal(userId: string, period: string) {
 	const [
@@ -16,6 +18,8 @@ async function fetchDashboardDataInternal(userId: string, period: string) {
 		categoryOverview,
 		pagadoresSnapshot,
 		notesData,
+		allAttachments,
+		inboxSnapshot,
 	] = await Promise.all([
 		fetchDashboardPeriodOverview(userId, period),
 		fetchDashboardAccounts(userId),
@@ -24,7 +28,26 @@ async function fetchDashboardDataInternal(userId: string, period: string) {
 		fetchDashboardCategoryOverview(userId, period),
 		fetchDashboardPayers(userId, period),
 		fetchDashboardNotes(userId),
+		fetchAttachmentsForPeriod(userId, period),
+		fetchDashboardInboxSnapshot(userId),
 	]);
+
+	const attachmentsSnapshot = allAttachments.reduce(
+		(acc, attachment, index) => {
+			acc.totalBytes += attachment.fileSize;
+			if (attachment.mimeType.startsWith("image/")) acc.imageCount++;
+			if (attachment.mimeType === "application/pdf") acc.pdfCount++;
+			if (index < 5) acc.recentAttachments.push(attachment);
+			return acc;
+		},
+		{
+			totalCount: allAttachments.length,
+			totalBytes: 0,
+			imageCount: 0,
+			pdfCount: 0,
+			recentAttachments: [] as typeof allAttachments,
+		},
+	);
 
 	return {
 		metrics: periodOverview.metrics,
@@ -42,10 +65,11 @@ async function fetchDashboardDataInternal(userId: string, period: string) {
 		installmentExpensesData: currentPeriodOverview.installmentExpensesData,
 		topEstablishmentsData: currentPeriodOverview.topEstablishmentsData,
 		topExpensesAll: currentPeriodOverview.topExpensesAll,
-		topExpensesCardOnly: currentPeriodOverview.topExpensesCardOnly,
 		purchasesByCategoryData: currentPeriodOverview.purchasesByCategoryData,
 		incomeByCategoryData: categoryOverview.incomeByCategoryData,
 		expensesByCategoryData: categoryOverview.expensesByCategoryData,
+		attachmentsSnapshot,
+		inboxSnapshot,
 	};
 }
 

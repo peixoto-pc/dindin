@@ -1,4 +1,5 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, eq, inArray, isNull, ne, not, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import {
 	cards,
@@ -6,13 +7,13 @@ import {
 	financialAccounts,
 	invoices,
 	payers,
-	type transactions,
+	transactions,
 } from "@/db/schema";
 import {
 	PAYMENT_METHODS,
 	TRANSACTION_CONDITIONS,
 	TRANSACTION_TYPES,
-} from "@/features/transactions/constants";
+} from "@/features/transactions/lib/constants";
 import {
 	INITIAL_BALANCE_CONDITION,
 	INITIAL_BALANCE_NOTE,
@@ -29,19 +30,6 @@ import { addMonthsToPeriod, MONTH_NAMES } from "@/shared/utils/period";
 // ============================================================================
 // Authorization Validation Functions
 // ============================================================================
-
-export async function validatePagadorOwnership(
-	userId: string,
-	payerId: string | null | undefined,
-): Promise<boolean> {
-	if (!payerId) return true;
-
-	const pagador = await db.query.payers.findFirst({
-		where: and(eq(payers.id, payerId), eq(payers.userId, userId)),
-	});
-
-	return !!pagador;
-}
 
 const normalizeIds = (ids: Array<string | null | undefined>) => [
 	...new Set(ids.filter((id): id is string => Boolean(id))),
@@ -62,19 +50,6 @@ export async function fetchOwnedPayerIds(
 		.where(and(eq(payers.userId, userId), inArray(payers.id, ids)));
 
 	return new Set(rows.map((row) => row.id));
-}
-
-export async function validateCategoriaOwnership(
-	userId: string,
-	categoryId: string | null | undefined,
-): Promise<boolean> {
-	if (!categoryId) return true;
-
-	const categoria = await db.query.categories.findFirst({
-		where: and(eq(categories.id, categoryId), eq(categories.userId, userId)),
-	});
-
-	return !!categoria;
 }
 
 export async function fetchOwnedCategoryIds(
@@ -167,14 +142,20 @@ export async function validateAllOwnership(
 	fields: {
 		payerId?: string | null;
 		secondaryPayerId?: string | null;
+		splitPayerIds?: Array<string | null | undefined>;
 		categoryId?: string | null;
 		accountId?: string | null;
 		cardId?: string | null;
 	},
 ): Promise<string | null> {
+	const payerIds = [
+		fields.payerId,
+		fields.secondaryPayerId,
+		...(fields.splitPayerIds ?? []),
+	];
 	const [ownedPayerIds, ownedCategoryIds, ownedAccountIds, ownedCardIds] =
 		await Promise.all([
-			fetchOwnedPayerIds(userId, [fields.payerId, fields.secondaryPayerId]),
+			fetchOwnedPayerIds(userId, payerIds),
 			fetchOwnedCategoryIds(userId, [fields.categoryId]),
 			fetchOwnedAccountIds(userId, [fields.accountId]),
 			fetchOwnedCardIds(userId, [fields.cardId]),
@@ -183,14 +164,16 @@ export async function validateAllOwnership(
 	const checks = [
 		!fields.payerId || ownedPayerIds.has(fields.payerId),
 		!fields.secondaryPayerId || ownedPayerIds.has(fields.secondaryPayerId),
+		(fields.splitPayerIds ?? []).every((id) => !id || ownedPayerIds.has(id)),
 		!fields.categoryId || ownedCategoryIds.has(fields.categoryId),
 		!fields.accountId || ownedAccountIds.has(fields.accountId),
 		!fields.cardId || ownedCardIds.has(fields.cardId),
 	];
 
 	const errors = [
-		"Pagador não encontrado ou sem permissão.",
-		"Pagador secundário não encontrado ou sem permissão.",
+		"Pessoa não encontrada ou sem permissão.",
+		"Pessoa secundária não encontrada ou sem permissão.",
+		"Uma das pessoas selecionadas não foi encontrada ou está sem permissão.",
 		"Categoria não encontrada.",
 		"Conta não encontrada.",
 		"Cartão não encontrado.",
@@ -200,6 +183,82 @@ export async function validateAllOwnership(
 		if (!checks[i]) return errors[i];
 	}
 	return null;
+}
+
+// ============================================================================
+// Card Limit Validation
+// ============================================================================
+
+const formatBRL = (value: number) =>
+	new Intl.NumberFormat("pt-BR", {
+		style: "currency",
+		currency: "BRL",
+	}).format(value);
+
+export async function validateCardLimit({
+	userId,
+	cardId,
+	addAmount,
+	excludeTransactionIds = [],
+}: {
+	userId: string;
+	cardId: string;
+	addAmount: number;
+	excludeTransactionIds?: string[];
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+	if (addAmount <= 0) {
+		return { ok: true };
+	}
+
+	const card = await db.query.cards.findFirst({
+		columns: { limit: true },
+		where: and(eq(cards.id, cardId), eq(cards.userId, userId)),
+	});
+
+	if (!card) {
+		return { ok: false, error: "Cartão não encontrado." };
+	}
+
+	const limit = Number(card.limit);
+	if (!Number.isFinite(limit) || limit <= 0) {
+		return { ok: true };
+	}
+
+	const conditions = [
+		eq(transactions.userId, userId),
+		eq(transactions.cardId, cardId),
+		or(isNull(transactions.isSettled), eq(transactions.isSettled, false)),
+		or(
+			ne(transactions.condition, "Recorrente"),
+			sql`${transactions.purchaseDate} <= current_date`,
+		),
+	];
+
+	if (excludeTransactionIds.length > 0) {
+		conditions.push(not(inArray(transactions.id, excludeTransactionIds)));
+	}
+
+	const [row] = await db
+		.select({
+			total: sql<number>`coalesce(sum(${transactions.amount}), 0)`,
+		})
+		.from(transactions)
+		.where(and(...conditions));
+
+	const sumAmount = Number(row?.total ?? 0);
+	const inUse = sumAmount < 0 ? Math.abs(sumAmount) : 0;
+	const available = Math.max(limit - inUse, 0);
+
+	if (addAmount > available + 0.005) {
+		return {
+			ok: false,
+			error: `Lançamento de ${formatBRL(addAmount)} excede o limite disponível do cartão (${formatBRL(
+				available,
+			)}).`,
+		};
+	}
+
+	return { ok: true };
 }
 
 // ============================================================================
@@ -221,10 +280,10 @@ export const resolvePeriod = (purchaseDate: string, period?: string | null) => {
 	return `${year}-${month}`;
 };
 
-export const isValidDateInput = (value: string) =>
+const isValidDateInput = (value: string) =>
 	!Number.isNaN(parseLocalDateString(value).getTime());
 
-export const baseFields = z.object({
+const baseFields = z.object({
 	purchaseDate: z
 		.string({ message: "Informe a data da transação." })
 		.trim()
@@ -258,6 +317,14 @@ export const baseFields = z.object({
 	}),
 	payerId: uuidSchema("Payer").nullable().optional(),
 	secondaryPayerId: uuidSchema("Payer secundário").optional(),
+	splitShares: z
+		.array(
+			z.object({
+				payerId: uuidSchema("Pessoa"),
+				amount: z.coerce.number().min(0.01, "Informe um valor maior que zero."),
+			}),
+		)
+		.optional(),
 	isSplit: z.boolean().optional().default(false),
 	primarySplitAmount: z.coerce.number().min(0).optional(),
 	secondarySplitAmount: z.coerce.number().min(0).optional(),
@@ -270,6 +337,12 @@ export const baseFields = z.object({
 		.int()
 		.min(1, "Selecione uma quantidade válida.")
 		.max(60, "Selecione uma quantidade válida.")
+		.optional(),
+	startInstallment: z.coerce
+		.number()
+		.int()
+		.min(1, "Selecione uma parcela válida.")
+		.max(60, "Selecione uma parcela válida.")
 		.optional(),
 	recurrenceCount: z.coerce
 		.number()
@@ -351,42 +424,61 @@ const refineLancamento = (
 				path: ["installmentCount"],
 				message: "Selecione pelo menos duas parcelas.",
 			});
+		} else if (
+			data.startInstallment &&
+			data.startInstallment > data.installmentCount
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["startInstallment"],
+				message: "A parcela inicial não pode ser maior que o total.",
+			});
 		}
 	}
 
 	if (data.isSplit) {
+		const shares = resolveSplitShares(data);
+
 		if (!data.payerId) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				path: ["payerId"],
-				message: "Selecione o pagador principal para dividir o lançamento.",
+				message: "Selecione a pessoa principal para dividir o lançamento.",
 			});
 		}
 
-		if (!data.secondaryPayerId) {
+		if (shares.length < 2) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				path: ["secondaryPayerId"],
-				message: "Selecione o pagador secundário para dividir o lançamento.",
-			});
-		} else if (data.payerId && data.secondaryPayerId === data.payerId) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				path: ["secondaryPayerId"],
-				message: "Escolha um pagador diferente para dividir o lançamento.",
+				path: ["splitShares"],
+				message: "Selecione pelo menos uma pessoa para dividir o lançamento.",
 			});
 		}
 
-		if (
-			data.primarySplitAmount !== undefined &&
-			data.secondarySplitAmount !== undefined
-		) {
-			const sum = data.primarySplitAmount + data.secondarySplitAmount;
+		const uniquePayerIds = new Set(shares.map((share) => share.payerId));
+		if (uniquePayerIds.size !== shares.length) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["splitShares"],
+				message: "Escolha pessoas diferentes para dividir o lançamento.",
+			});
+		}
+
+		if (shares.some((share) => share.amount <= 0)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["splitShares"],
+				message: "Informe um valor maior que zero para cada pessoa.",
+			});
+		}
+
+		if (shares.length > 0) {
+			const sum = shares.reduce((total, share) => total + share.amount, 0);
 			const total = Math.abs(data.amount);
 			if (Math.abs(sum - total) > 0.01) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					path: ["primarySplitAmount"],
+					path: ["splitShares"],
 					message: "A soma das divisões deve ser igual ao valor total.",
 				});
 			}
@@ -394,7 +486,11 @@ const refineLancamento = (
 	}
 };
 
-export const createSchema = baseFields.superRefine(refineLancamento);
+export const createSchema = baseFields
+	.extend({
+		importFromTransactionId: uuidSchema("Lançamento fonte").optional(),
+	})
+	.superRefine(refineLancamento);
 export const updateSchema = baseFields
 	.extend({
 		id: uuidSchema("Lançamento"),
@@ -410,9 +506,14 @@ export const toggleSettlementSchema = z.object({
 	value: z.boolean({
 		message: "Informe o status de pagamento.",
 	}),
+	paymentAccountId: uuidSchema("Conta de pagamento").nullable().optional(),
+	paymentDate: z
+		.string()
+		.regex(/^\d{4}-\d{2}-\d{2}$/u, "Data de pagamento inválida.")
+		.optional(),
 });
 
-export type BaseInput = z.infer<typeof baseFields>;
+type BaseInput = z.infer<typeof baseFields>;
 export type CreateInput = z.infer<typeof createSchema>;
 export type UpdateInput = z.infer<typeof updateSchema>;
 export type DeleteInput = z.infer<typeof deleteSchema>;
@@ -441,7 +542,7 @@ type InitialCandidate = {
 	paymentMethod: string | null;
 };
 
-export const isInitialBalanceLancamento = (record?: InitialCandidate | null) =>
+export const isInitialBalanceTransaction = (record?: InitialCandidate | null) =>
 	!!record &&
 	record.note === INITIAL_BALANCE_NOTE &&
 	record.transactionType === INITIAL_BALANCE_TRANSACTION_TYPE &&
@@ -468,9 +569,38 @@ const splitAmount = (totalCents: number, parts: number) => {
 	);
 };
 
-export type Share = {
+type Share = {
 	payerId: string | null;
 	amountCents: number;
+};
+
+type SplitShareInput = {
+	payerId: string;
+	amount: number;
+};
+
+const resolveSplitShares = (data: {
+	payerId?: string | null;
+	secondaryPayerId?: string | null;
+	splitShares?: SplitShareInput[];
+	primarySplitAmount?: number;
+	secondarySplitAmount?: number;
+}): SplitShareInput[] => {
+	if (data.splitShares && data.splitShares.length > 0) {
+		return data.splitShares;
+	}
+
+	if (!data.payerId || !data.secondaryPayerId) {
+		return [];
+	}
+
+	return [
+		{ payerId: data.payerId, amount: data.primarySplitAmount ?? 0 },
+		{
+			payerId: data.secondaryPayerId,
+			amount: data.secondarySplitAmount ?? 0,
+		},
+	];
 };
 
 export const buildShares = ({
@@ -478,6 +608,7 @@ export const buildShares = ({
 	payerId,
 	isSplit,
 	secondaryPayerId,
+	splitShares,
 	primarySplitAmountCents,
 	secondarySplitAmountCents,
 }: {
@@ -485,10 +616,18 @@ export const buildShares = ({
 	payerId: string | null;
 	isSplit: boolean;
 	secondaryPayerId?: string;
+	splitShares?: SplitShareInput[];
 	primarySplitAmountCents?: number;
 	secondarySplitAmountCents?: number;
 }): Share[] => {
 	if (isSplit) {
+		if (splitShares && splitShares.length > 0) {
+			return splitShares.map((share) => ({
+				payerId: share.payerId,
+				amountCents: Math.round(share.amount * 100),
+			}));
+		}
+
 		if (!payerId || !secondaryPayerId) {
 			throw new Error("Configuração de divisão inválida para o lançamento.");
 		}
@@ -531,7 +670,7 @@ type BuildTransactionRecordsParams = {
 
 export type TransactionInsert = typeof transactions.$inferInsert;
 
-export const buildLancamentoRecords = ({
+export const buildTransactionRecords = ({
 	data,
 	userId,
 	period,
@@ -544,6 +683,7 @@ export const buildLancamentoRecords = ({
 	seriesId,
 }: BuildTransactionRecordsParams): TransactionInsert[] => {
 	const records: TransactionInsert[] = [];
+	const isSplit = (data.isSplit ?? false) && shares.length > 1;
 
 	const basePayload = {
 		name: data.name,
@@ -562,6 +702,8 @@ export const buildLancamentoRecords = ({
 		seriesId,
 	};
 
+	const cycleSplitGroupId = () => (isSplit ? randomUUID() : null);
+
 	const resolveSettledValue = (cycleIndex: number) => {
 		if (shouldNullifySettled) {
 			return null;
@@ -575,23 +717,27 @@ export const buildLancamentoRecords = ({
 
 	if (data.condition === "Parcelado") {
 		const installmentTotal = data.installmentCount ?? 0;
+		const startInstallment = data.startInstallment ?? 1;
 		const amountsByShare = shares.map((share) =>
 			splitAmount(share.amountCents, installmentTotal),
 		);
 
 		for (
-			let installment = 0;
-			installment < installmentTotal;
-			installment += 1
+			let index = 0;
+			index <= installmentTotal - startInstallment;
+			index += 1
 		) {
-			const installmentPeriod = addMonthsToPeriod(period, installment);
+			const currentInstallment = startInstallment + index;
+			const installmentPeriod = addMonthsToPeriod(period, index);
 			const installmentDueDate = dueDate
-				? addMonthsToDate(dueDate, installment)
+				? addMonthsToDate(dueDate, index)
 				: null;
+			const splitGroupId = cycleSplitGroupId();
 
 			shares.forEach((share, shareIndex) => {
-				const amountCents = amountsByShare[shareIndex]?.[installment] ?? 0;
-				const settled = resolveSettledValue(installment);
+				const amountCents =
+					amountsByShare[shareIndex]?.[currentInstallment - 1] ?? 0;
+				const settled = resolveSettledValue(index);
 				records.push({
 					...basePayload,
 					amount: centsToDecimalString(amountCents * amountSign),
@@ -600,9 +746,10 @@ export const buildLancamentoRecords = ({
 					period: installmentPeriod,
 					isSettled: settled,
 					installmentCount: installmentTotal,
-					currentInstallment: installment + 1,
+					currentInstallment,
 					recurrenceCount: null,
 					dueDate: installmentDueDate,
+					splitGroupId,
 					boletoPaymentDate:
 						data.paymentMethod === "Boleto" && settled
 							? boletoPaymentDate
@@ -623,6 +770,7 @@ export const buildLancamentoRecords = ({
 			const recurrenceDueDate = dueDate
 				? addMonthsToDate(dueDate, index)
 				: null;
+			const splitGroupId = cycleSplitGroupId();
 
 			shares.forEach((share) => {
 				const settled = resolveSettledValue(index);
@@ -635,6 +783,7 @@ export const buildLancamentoRecords = ({
 					isSettled: settled,
 					recurrenceCount: recurrenceTotal,
 					dueDate: recurrenceDueDate,
+					splitGroupId,
 					boletoPaymentDate:
 						data.paymentMethod === "Boleto" && settled
 							? boletoPaymentDate
@@ -646,6 +795,8 @@ export const buildLancamentoRecords = ({
 		return records;
 	}
 
+	const splitGroupId = cycleSplitGroupId();
+
 	shares.forEach((share) => {
 		const settled = resolveSettledValue(0);
 		records.push({
@@ -656,6 +807,7 @@ export const buildLancamentoRecords = ({
 			period,
 			isSettled: settled,
 			dueDate,
+			splitGroupId,
 			boletoPaymentDate:
 				data.paymentMethod === "Boleto" && settled ? boletoPaymentDate : null,
 		});
@@ -763,7 +915,7 @@ export const updateBulkSchema = z.object({
 
 export type UpdateBulkInput = z.infer<typeof updateBulkSchema>;
 
-export const massAddTransactionSchema = z.object({
+const massAddTransactionSchema = z.object({
 	purchaseDate: z
 		.string({ message: "Informe a data da transação." })
 		.trim()

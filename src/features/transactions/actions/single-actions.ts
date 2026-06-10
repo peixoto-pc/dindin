@@ -1,13 +1,14 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import {
 	attachments,
 	financialAccounts,
 	transactionAttachments,
 	transactions,
 } from "@/db/schema";
+import { ACCOUNT_AUTO_INVOICE_NOTE_PREFIX } from "@/shared/lib/accounts/constants";
 import { handleActionError } from "@/shared/lib/actions/helpers";
 import { getUser } from "@/shared/lib/auth/server";
 import { db } from "@/shared/lib/db";
@@ -21,10 +22,11 @@ import {
 	getBusinessTodayDate,
 	parseLocalDateString,
 } from "@/shared/utils/date";
+import { copyAttachmentsForImport } from "../lib/attachment-copy";
 import { cleanupAttachmentsAfterTransactionDelete } from "./attachments";
 import {
-	buildLancamentoRecords,
 	buildShares,
+	buildTransactionRecords,
 	type CreateInput,
 	centsToDecimalString,
 	createSchema,
@@ -32,7 +34,7 @@ import {
 	deleteSchema,
 	formatPaidInvoicePeriods,
 	getPaidInvoicePeriods,
-	isInitialBalanceLancamento,
+	isInitialBalanceTransaction,
 	resolvePeriod,
 	resolveUserLabel,
 	revalidate,
@@ -41,6 +43,7 @@ import {
 	type UpdateInput,
 	updateSchema,
 	validateAllOwnership,
+	validateCardLimit,
 } from "./core";
 
 export async function createTransactionAction(
@@ -53,6 +56,7 @@ export async function createTransactionAction(
 		const ownershipError = await validateAllOwnership(user.id, {
 			payerId: data.payerId,
 			secondaryPayerId: data.secondaryPayerId,
+			splitPayerIds: data.splitShares?.map((share) => share.payerId),
 			categoryId: data.categoryId,
 			accountId: data.accountId,
 			cardId: data.cardId,
@@ -81,6 +85,7 @@ export async function createTransactionAction(
 			payerId: data.payerId ?? null,
 			isSplit: data.isSplit ?? false,
 			secondaryPayerId: data.secondaryPayerId,
+			splitShares: data.splitShares,
 			primarySplitAmountCents: data.primarySplitAmount
 				? Math.round(data.primarySplitAmount * 100)
 				: undefined,
@@ -93,7 +98,7 @@ export async function createTransactionAction(
 			data.condition === "Parcelado" || data.condition === "Recorrente";
 		const seriesId = isSeriesLancamento ? randomUUID() : null;
 
-		const records = buildLancamentoRecords({
+		const records = buildTransactionRecords({
 			data,
 			userId: user.id,
 			period,
@@ -131,12 +136,34 @@ export async function createTransactionAction(
 					)} já estão pagas. Desfaça o pagamento antes de adicionar este lançamento.`,
 				} as ActionResult<{ ids: string[] }>;
 			}
+
+			if (data.transactionType === "Despesa") {
+				const limitCheck = await validateCardLimit({
+					userId: user.id,
+					cardId: data.cardId,
+					addAmount: Math.abs(data.amount),
+				});
+				if (!limitCheck.ok) {
+					return {
+						success: false,
+						error: limitCheck.error,
+					} as ActionResult<{ ids: string[] }>;
+				}
+			}
 		}
 
 		const inserted = await db
 			.insert(transactions)
 			.values(records)
 			.returning({ id: transactions.id });
+
+		if (data.importFromTransactionId && inserted.length > 0) {
+			await copyAttachmentsForImport({
+				sourceTransactionId: data.importFromTransactionId,
+				targetTransactionIds: inserted.map((r) => r.id),
+				targetUserId: user.id,
+			});
+		}
 
 		const notificationEntries = buildEntriesByPayer(
 			records.map((record) => ({
@@ -156,7 +183,7 @@ export async function createTransactionAction(
 			await sendPayerAutoEmails({
 				userLabel: resolveUserLabel(user),
 				action: "created",
-				entriesByPagador: notificationEntries,
+				entriesByPayer: notificationEntries,
 			});
 		}
 
@@ -182,6 +209,7 @@ export async function updateTransactionAction(
 		const ownershipError = await validateAllOwnership(user.id, {
 			payerId: data.payerId,
 			secondaryPayerId: data.secondaryPayerId,
+			splitPayerIds: data.splitShares?.map((share) => share.payerId),
 			categoryId: data.categoryId,
 			accountId: data.accountId,
 			cardId: data.cardId,
@@ -206,13 +234,6 @@ export async function updateTransactionAction(
 				eq(transactions.id, data.id),
 				eq(transactions.userId, user.id),
 			),
-			with: {
-				category: {
-					columns: {
-						name: true,
-					},
-				},
-			},
 		})) as
 			| {
 					id: string;
@@ -224,7 +245,6 @@ export async function updateTransactionAction(
 					accountId: string | null;
 					cardId: string | null;
 					categoryId: string | null;
-					category: { name: string } | null;
 			  }
 			| undefined;
 
@@ -232,14 +252,17 @@ export async function updateTransactionAction(
 			return { success: false, error: "Lançamento não encontrado." };
 		}
 
-		const categoriasProtegidasEdicao = ["Saldo inicial", "Pagamentos"];
-		if (
-			existing.category?.name &&
-			categoriasProtegidasEdicao.includes(existing.category.name)
-		) {
+		if (existing.note?.startsWith(ACCOUNT_AUTO_INVOICE_NOTE_PREFIX)) {
 			return {
 				success: false,
-				error: `Lançamentos com a categoria '${existing.category.name}' não podem ser editados.`,
+				error: "Pagamentos automáticos de fatura não podem ser editados.",
+			};
+		}
+
+		if (isInitialBalanceTransaction(existing)) {
+			return {
+				success: false,
+				error: "Lançamentos de saldo inicial não podem ser editados.",
 			};
 		}
 
@@ -278,6 +301,22 @@ export async function updateTransactionAction(
 			}
 		}
 
+		if (
+			data.paymentMethod === "Cartão de crédito" &&
+			data.cardId &&
+			data.transactionType === "Despesa"
+		) {
+			const limitCheck = await validateCardLimit({
+				userId: user.id,
+				cardId: data.cardId,
+				addAmount: Math.abs(data.amount),
+				excludeTransactionIds: [data.id],
+			});
+			if (!limitCheck.ok) {
+				return { success: false, error: limitCheck.error };
+			}
+		}
+
 		await db
 			.update(transactions)
 			.set({
@@ -303,7 +342,7 @@ export async function updateTransactionAction(
 				and(eq(transactions.id, data.id), eq(transactions.userId, user.id)),
 			);
 
-		if (isInitialBalanceLancamento(existing) && existing.accountId) {
+		if (isInitialBalanceTransaction(existing) && existing.accountId) {
 			const updatedInitialBalance = formatDecimalForDbRequired(
 				Math.abs(data.amount ?? 0),
 			);
@@ -351,13 +390,6 @@ export async function deleteTransactionAction(
 				eq(transactions.id, data.id),
 				eq(transactions.userId, user.id),
 			),
-			with: {
-				category: {
-					columns: {
-						name: true,
-					},
-				},
-			},
 		})) as
 			| {
 					id: string;
@@ -371,7 +403,6 @@ export async function deleteTransactionAction(
 					period: string;
 					note: string | null;
 					categoryId: string | null;
-					category: { name: string } | null;
 			  }
 			| undefined;
 
@@ -379,14 +410,17 @@ export async function deleteTransactionAction(
 			return { success: false, error: "Lançamento não encontrado." };
 		}
 
-		const categoriasProtegidasRemocao = ["Saldo inicial", "Pagamentos"];
-		if (
-			existing.category?.name &&
-			categoriasProtegidasRemocao.includes(existing.category.name)
-		) {
+		if (existing.note?.startsWith(ACCOUNT_AUTO_INVOICE_NOTE_PREFIX)) {
 			return {
 				success: false,
-				error: `Lançamentos com a categoria '${existing.category.name}' não podem ser removidos.`,
+				error: "Pagamentos automáticos de fatura não podem ser removidos.",
+			};
+		}
+
+		if (isInitialBalanceTransaction(existing)) {
+			return {
+				success: false,
+				error: "Lançamentos de saldo inicial não podem ser removidos.",
 			};
 		}
 
@@ -425,13 +459,142 @@ export async function deleteTransactionAction(
 			await sendPayerAutoEmails({
 				userLabel: resolveUserLabel(user),
 				action: "deleted",
-				entriesByPagador: notificationEntries,
+				entriesByPayer: notificationEntries,
 			});
 		}
 
 		revalidate(user.id);
 
 		return { success: true, message: "Lançamento removido com sucesso." };
+	} catch (error) {
+		return handleActionError(error);
+	}
+}
+
+export async function updateTransactionSplitPairAction(
+	input: UpdateInput,
+): Promise<ActionResult> {
+	try {
+		const user = await getUser();
+		const data = updateSchema.parse(input);
+
+		const ownershipError = await validateAllOwnership(user.id, {
+			payerId: data.payerId,
+			splitPayerIds: data.splitShares?.map((share) => share.payerId),
+			categoryId: data.categoryId,
+			accountId: data.accountId,
+			cardId: data.cardId,
+		});
+		if (ownershipError) {
+			return { success: false, error: ownershipError };
+		}
+
+		const existing = await db.query.transactions.findFirst({
+			columns: {
+				id: true,
+				period: true,
+				transactionType: true,
+				condition: true,
+				paymentMethod: true,
+				accountId: true,
+				cardId: true,
+				categoryId: true,
+				splitGroupId: true,
+			},
+			where: and(
+				eq(transactions.id, data.id),
+				eq(transactions.userId, user.id),
+			),
+		});
+
+		if (!existing) {
+			return { success: false, error: "Lançamento não encontrado." };
+		}
+
+		const period = resolvePeriod(data.purchaseDate, data.period);
+		const amountSign: 1 | -1 = data.transactionType === "Despesa" ? -1 : 1;
+		const amountCents = Math.round(Math.abs(data.amount) * 100);
+		const normalizedAmount = centsToDecimalString(amountCents * amountSign);
+		const normalizedSettled =
+			data.paymentMethod === "Cartão de crédito"
+				? null
+				: (data.isSettled ?? false);
+		const shouldSetBoletoPaymentDate =
+			data.paymentMethod === "Boleto" && Boolean(normalizedSettled);
+		const boletoPaymentDateValue = shouldSetBoletoPaymentDate
+			? data.boletoPaymentDate
+				? parseLocalDateString(data.boletoPaymentDate)
+				: getBusinessTodayDate()
+			: null;
+		const targetCardId = data.cardId ?? existing.cardId;
+		const movedInvoice =
+			data.paymentMethod === "Cartão de crédito" &&
+			targetCardId &&
+			(targetCardId !== existing.cardId || period !== existing.period);
+
+		if (movedInvoice) {
+			const paidPeriods = await getPaidInvoicePeriods(user.id, targetCardId, [
+				period,
+			]);
+			if (paidPeriods.length > 0) {
+				return {
+					success: false,
+					error: `As faturas dos meses ${formatPaidInvoicePeriods(
+						paidPeriods,
+					)} já estão pagas. Desfaça o pagamento antes de mover este lançamento.`,
+				};
+			}
+		}
+
+		const purchaseDate = parseLocalDateString(data.purchaseDate);
+		const dueDate = data.dueDate ? parseLocalDateString(data.dueDate) : null;
+
+		const sharedPayload = {
+			name: data.name,
+			purchaseDate,
+			transactionType: data.transactionType,
+			condition: data.condition,
+			paymentMethod: data.paymentMethod,
+			accountId: data.accountId ?? null,
+			cardId: data.cardId ?? null,
+			categoryId: data.categoryId ?? null,
+			note: data.note ?? null,
+			dueDate,
+			period,
+			isSettled: normalizedSettled,
+			boletoPaymentDate: boletoPaymentDateValue,
+		};
+
+		await db.transaction(async (tx: typeof db) => {
+			await tx
+				.update(transactions)
+				.set({
+					...sharedPayload,
+					amount: normalizedAmount,
+					payerId: data.payerId ?? null,
+					installmentCount: data.installmentCount ?? null,
+					recurrenceCount: data.recurrenceCount ?? null,
+				})
+				.where(
+					and(eq(transactions.id, data.id), eq(transactions.userId, user.id)),
+				);
+
+			if (existing.splitGroupId) {
+				await tx
+					.update(transactions)
+					.set(sharedPayload)
+					.where(
+						and(
+							eq(transactions.splitGroupId, existing.splitGroupId),
+							eq(transactions.userId, user.id),
+							ne(transactions.id, data.id),
+						),
+					);
+			}
+		});
+
+		revalidate(user.id);
+		return { success: true, message: "Lançamentos atualizados com sucesso." };
 	} catch (error) {
 		return handleActionError(error);
 	}
@@ -445,7 +608,12 @@ export async function toggleTransactionSettlementAction(
 		const data = toggleSettlementSchema.parse(input);
 
 		const existing = await db.query.transactions.findFirst({
-			columns: { id: true, paymentMethod: true },
+			columns: {
+				id: true,
+				paymentMethod: true,
+				accountId: true,
+				transactionType: true,
+			},
 			where: and(
 				eq(transactions.id, data.id),
 				eq(transactions.userId, user.id),
@@ -464,18 +632,53 @@ export async function toggleTransactionSettlementAction(
 		}
 
 		const isBoleto = existing.paymentMethod === "Boleto";
+		const isIncomeBill = isBoleto && existing.transactionType === "Receita";
+		const customPaymentDate =
+			isBoleto && data.value && data.paymentDate
+				? parseLocalDateString(data.paymentDate)
+				: null;
 		const boletoPaymentDate = isBoleto
 			? data.value
-				? getBusinessTodayDate()
+				? (customPaymentDate ?? getBusinessTodayDate())
 				: null
 			: null;
 
+		const shouldUpdateAccount =
+			isBoleto && data.value && data.paymentAccountId !== undefined;
+
+		if (shouldUpdateAccount && data.paymentAccountId) {
+			const paymentAccount = await db.query.financialAccounts.findFirst({
+				columns: { id: true },
+				where: and(
+					eq(financialAccounts.id, data.paymentAccountId),
+					eq(financialAccounts.userId, user.id),
+				),
+			});
+
+			if (!paymentAccount) {
+				return {
+					success: false,
+					error: `Conta de ${isIncomeBill ? "recebimento" : "pagamento"} não encontrada.`,
+				};
+			}
+		}
+
+		const updatePayload: {
+			isSettled: boolean;
+			boletoPaymentDate: Date | null;
+			accountId?: string | null;
+		} = {
+			isSettled: data.value,
+			boletoPaymentDate,
+		};
+
+		if (shouldUpdateAccount) {
+			updatePayload.accountId = data.paymentAccountId ?? null;
+		}
+
 		await db
 			.update(transactions)
-			.set({
-				isSettled: data.value,
-				boletoPaymentDate,
-			})
+			.set(updatePayload)
 			.where(
 				and(eq(transactions.id, data.id), eq(transactions.userId, user.id)),
 			);
@@ -485,8 +688,8 @@ export async function toggleTransactionSettlementAction(
 		return {
 			success: true,
 			message: data.value
-				? "Lançamento marcado como pago."
-				: "Pagamento desfeito com sucesso.",
+				? `Lançamento marcado como ${isIncomeBill ? "recebido" : "pago"}.`
+				: `${isIncomeBill ? "Recebimento" : "Pagamento"} desfeito com sucesso.`,
 		};
 	} catch (error) {
 		return handleActionError(error);

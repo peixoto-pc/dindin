@@ -1,18 +1,10 @@
-import localFont from "next/font/local";
+import { Bricolage_Grotesque } from "next/font/google";
 
-export const america = localFont({
-	src: [
-		{
-			path: "./america-regular.woff2",
-			weight: "400",
-			style: "normal",
-		},
-		{
-			path: "./america-medium.woff2",
-			weight: "500",
-			style: "normal",
-		},
-	],
-	display: "fallback",
-	variable: "--font-america",
+export const bricolage = Bricolage_Grotesque({
+	subsets: ["latin"],
+	display: "swap",
+	variable: "--font-bricolage",
+	fallback: ["arial", "ui-sans-serif", "system-ui"],
+	weight: ["500", "600", "700"],
+	preload: true,
 });

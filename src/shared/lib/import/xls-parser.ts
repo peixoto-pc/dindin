@@ -14,12 +14,12 @@ function excelSerialToDate(
 	if (serial < 1) return null;
 	let adjusted = serial;
 	if (serial > 60) adjusted--;
-	const baseDate = new Date(1899, 11, 31);
-	const date = new Date(baseDate.getTime() + adjusted * 86400000);
+	const baseDate = Date.UTC(1899, 11, 31);
+	const date = new Date(baseDate + adjusted * 86400000);
 	return {
-		y: date.getFullYear(),
-		m: date.getMonth() + 1,
-		d: date.getDate(),
+		y: date.getUTCFullYear(),
+		m: date.getUTCMonth() + 1,
+		d: date.getUTCDate(),
 	};
 }
 
@@ -38,9 +38,9 @@ function parseDateValue(value: unknown): string | null {
 
 	// ExcelJS pode retornar Date objects
 	if (value instanceof Date) {
-		const y = value.getFullYear();
-		const m = String(value.getMonth() + 1).padStart(2, "0");
-		const d = String(value.getDate()).padStart(2, "0");
+		const y = value.getUTCFullYear();
+		const m = String(value.getUTCMonth() + 1).padStart(2, "0");
+		const d = String(value.getUTCDate()).padStart(2, "0");
 		return `${y}-${m}-${d}`;
 	}
 

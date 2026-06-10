@@ -1,6 +1,8 @@
 "use client";
 
 import {
+	RiCalendarCloseLine,
+	RiCalendarScheduleLine,
 	RiChat3Line,
 	RiDeleteBin5Line,
 	RiFileList2Line,
@@ -8,6 +10,7 @@ import {
 } from "@remixicon/react";
 import Image from "next/image";
 import MoneyValues from "@/shared/components/money-values";
+import { Badge } from "@/shared/components/ui/badge";
 import {
 	Card,
 	CardContent,
@@ -21,6 +24,10 @@ import {
 	TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
 import { resolveCardBrandAsset } from "@/shared/lib/cards/brand-assets";
+import {
+	INVOICE_PAYMENT_STATUS,
+	type InvoicePaymentStatus,
+} from "@/shared/lib/invoices";
 import { resolveLogoSrc } from "@/shared/lib/logo";
 import { cn } from "@/shared/utils/ui";
 
@@ -30,9 +37,12 @@ interface CardItemProps {
 	status: string;
 	closingDay: string;
 	dueDay: string;
-	limit: number | null;
-	limitInUse?: number | null;
-	limitAvailable?: number | null;
+	limit: number;
+	limitInUse?: number;
+	limitAvailable?: number;
+	currentInvoiceAmount: number;
+	currentInvoiceLabel: string;
+	currentInvoiceStatus: InvoicePaymentStatus | null;
 	accountName: string;
 	logo?: string | null;
 	note?: string | null;
@@ -52,6 +62,9 @@ export function CardItem({
 	limit,
 	limitInUse,
 	limitAvailable,
+	currentInvoiceAmount,
+	currentInvoiceLabel,
+	currentInvoiceStatus,
 	accountName: _accountName,
 	logo,
 	note,
@@ -61,62 +74,25 @@ export function CardItem({
 }: CardItemProps) {
 	void _accountName;
 
-	const limitTotal = limit ?? null;
 	const used =
 		limitInUse ??
-		(limitTotal !== null && limitAvailable != null
-			? Math.max(limitTotal - limitAvailable, 0)
-			: limitTotal !== null
-				? 0
-				: null);
+		(limitAvailable !== undefined ? Math.max(limit - limitAvailable, 0) : 0);
 
-	const available =
-		limitAvailable ??
-		(limitTotal !== null && used !== null
-			? Math.max(limitTotal - used, 0)
-			: null);
+	const available = limitAvailable ?? Math.max(limit - used, 0);
 
 	const usagePercent =
-		limitTotal && limitTotal > 0 && used !== null
-			? Math.min(Math.max((used / limitTotal) * 100, 0), 100)
-			: 0;
+		limit > 0 ? Math.min(Math.max((used / limit) * 100, 0), 100) : 0;
+	const exceeded = usagePercent >= 100;
 
 	const logoPath = resolveLogoSrc(logo);
 	const brandAsset = resolveCardBrandAsset(brand);
 	const isInactive = status?.toLowerCase() === "inativo";
-	const metrics =
-		limitTotal === null || used === null || available === null
-			? null
-			: [
-					{ label: "Limite Total", value: limitTotal },
-					{ label: "Em uso", value: used },
-					{ label: "Disponível", value: available },
-				];
-
-	const actions = [
-		{
-			label: "editar",
-			icon: <RiPencilLine className="size-4" aria-hidden />,
-			onClick: onEdit,
-			className: "text-primary",
-		},
-		{
-			label: "ver fatura",
-			icon: <RiFileList2Line className="size-4" aria-hidden />,
-			onClick: onInvoice,
-			className: "text-primary",
-		},
-		{
-			label: "remover",
-			icon: <RiDeleteBin5Line className="size-4" aria-hidden />,
-			onClick: onRemove,
-			className: "text-destructive",
-		},
-	];
+	const isCurrentInvoicePaid =
+		currentInvoiceStatus === INVOICE_PAYMENT_STATUS.PAID;
 
 	return (
 		<Card className="flex flex-col p-6 w-full">
-			<CardHeader className="space-y-2 px-0 pb-0">
+			<CardHeader className="space-y-1 p-0">
 				<div className="flex items-start justify-between gap-2">
 					<div className="flex flex-1 items-center gap-2">
 						{logoPath ? (
@@ -135,8 +111,8 @@ export function CardItem({
 						) : null}
 
 						<div className="min-w-0">
-							<div className="flex items-center gap-1.5">
-								<h3 className="truncate text-sm font-medium text-foreground sm:text-base">
+							<div className="flex items-center gap-2">
+								<h3 className="truncate font-semibold text-foreground">
 									{name}
 								</h3>
 								{note ? (
@@ -166,14 +142,14 @@ export function CardItem({
 					</div>
 
 					{brandAsset ? (
-						<div className="flex items-center justify-center py-1">
+						<div className="flex items-center justify-center py-2">
 							<Image
 								src={brandAsset}
 								alt={`Bandeira ${brand}`}
 								width={36}
 								height={36}
 								className={cn(
-									"h-5 w-auto rounded",
+									"h-4 w-auto rounded",
 									isInactive && "grayscale opacity-40",
 								)}
 							/>
@@ -185,79 +161,110 @@ export function CardItem({
 					)}
 				</div>
 
-				<div className="flex items-center justify-between border-y py-3 text-xs font-medium text-muted-foreground sm:text-sm">
-					<span>
-						Fecha dia{" "}
-						<span className="font-medium text-foreground">
-							{formatDay(closingDay)}
+				<div className="flex items-center justify-between text-sm text-muted-foreground rounded-lg py-4 px-2 bg-primary/5">
+					<span className="inline-flex items-center gap-1">
+						<RiCalendarCloseLine className="size-4" aria-hidden />
+						Fecha{" "}
+						<span className="font-semibold text-foreground">
+							dia {formatDay(closingDay)}
 						</span>
 					</span>
-					<span>
-						Vence dia{" "}
-						<span className="font-medium text-foreground">
-							{formatDay(dueDay)}
+					<span className="inline-flex items-center gap-1">
+						<RiCalendarScheduleLine className="size-4" aria-hidden />
+						Vence{" "}
+						<span className="font-semibold text-foreground">
+							dia {formatDay(dueDay)}
 						</span>
 					</span>
 				</div>
 			</CardHeader>
 
-			<CardContent className="flex flex-1 flex-col gap-5 px-0">
-				{metrics ? (
-					<>
-						<div className="grid grid-cols-3 gap-4">
-							<div className="flex flex-col items-start gap-1">
-								<p className="text-sm font-medium text-foreground">
-									<MoneyValues amount={metrics[0].value} />
-								</p>
-								<span className="text-xs font-medium text-muted-foreground">
-									{metrics[0].label}
-								</span>
-							</div>
+			<CardContent className="flex flex-1 flex-col gap-4 px-0">
+				<div className="flex flex-col gap-0.5">
+					<span className="text-xs text-muted-foreground">
+						{currentInvoiceLabel}
+					</span>
+					<div className="flex flex-wrap items-center gap-2">
+						<MoneyValues
+							amount={currentInvoiceAmount}
+							className="text-xl font-semibold text-info"
+						/>
+						{isCurrentInvoicePaid ? (
+							<Badge variant="success" className="text-xs">
+								Paga
+							</Badge>
+						) : null}
+					</div>
+				</div>
 
-							<div className="flex flex-col items-center gap-1">
-								<p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-									<span className="size-2 rounded-full bg-primary" />
-									<MoneyValues amount={metrics[1].value} />
-								</p>
-								<span className="text-xs font-medium text-muted-foreground">
-									{metrics[1].label}
-								</span>
-							</div>
+				<div className="flex gap-2 justify-between w-full">
+					<div className="flex min-w-0 flex-col gap-0.5">
+						<span className="text-xs text-muted-foreground">Limite total</span>
+						<MoneyValues
+							amount={limit}
+							className="text-sm font-semibold text-foreground"
+						/>
+					</div>
 
-							<div className="flex flex-col items-end gap-1">
-								<p className="text-sm font-medium text-foreground">
-									<MoneyValues amount={metrics[2].value} />
-								</p>
-								<span className="text-xs font-medium text-muted-foreground">
-									{metrics[2].label}
-								</span>
-							</div>
-						</div>
+					<div className="flex min-w-0 flex-col gap-0.5">
+						<span className="text-xs text-muted-foreground">
+							Limite utilizado
+						</span>
+						<MoneyValues
+							amount={used}
+							className="text-sm font-semibold text-primary"
+						/>
+					</div>
 
-						<Progress value={usagePercent} className="h-3" />
-					</>
-				) : (
-					<p className="text-sm text-muted-foreground">
-						Ainda não há limite registrado para este cartão.
-					</p>
-				)}
+					<div className="flex min-w-0 flex-col gap-0.5">
+						<span className="text-xs text-muted-foreground">
+							Limite disponível
+						</span>
+						<MoneyValues
+							amount={available}
+							className="text-sm font-semibold text-success"
+						/>
+					</div>
+				</div>
+
+				<div className="flex flex-col gap-2">
+					<Progress
+						value={usagePercent}
+						className={cn("h-2.5", exceeded && "bg-destructive/20!")}
+						indicatorClassName={cn(exceeded && "bg-destructive")}
+						aria-label={`${usagePercent.toFixed(0)}% do limite utilizado`}
+					/>
+					<span className="text-xs text-muted-foreground">
+						{usagePercent.toFixed(0)}% utilizado
+					</span>
+				</div>
 			</CardContent>
 
-			<CardFooter className="mt-auto flex flex-wrap gap-4 px-0 text-sm">
-				{actions.map(({ label, icon, onClick, className }) => (
-					<button
-						key={label}
-						type="button"
-						onClick={onClick}
-						className={cn(
-							"flex items-center gap-1 font-medium transition-opacity hover:opacity-80",
-							className,
-						)}
-					>
-						{icon}
-						{label}
-					</button>
-				))}
+			<CardFooter className="mt-auto flex flex-wrap gap-4 px-0 pt-2 text-sm">
+				<button
+					type="button"
+					onClick={onEdit}
+					className="flex items-center gap-1 font-medium text-primary transition-opacity hover:opacity-80"
+				>
+					<RiPencilLine className="size-4" aria-hidden />
+					editar
+				</button>
+				<button
+					type="button"
+					onClick={onInvoice}
+					className="flex items-center gap-1 font-medium text-primary transition-opacity hover:opacity-80"
+				>
+					<RiFileList2Line className="size-4" aria-hidden />
+					fatura
+				</button>
+				<button
+					type="button"
+					onClick={onRemove}
+					className="flex items-center gap-1 font-medium text-destructive transition-opacity hover:opacity-80"
+				>
+					<RiDeleteBin5Line className="size-4" aria-hidden />
+					remover
+				</button>
 			</CardFooter>
 		</Card>
 	);

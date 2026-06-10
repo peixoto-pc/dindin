@@ -11,8 +11,9 @@ import {
 	sql,
 	sum,
 } from "drizzle-orm";
-import { cards, transactions } from "@/db/schema";
+import { cards, financialAccounts, transactions } from "@/db/schema";
 import { ACCOUNT_AUTO_INVOICE_NOTE_PREFIX } from "@/shared/lib/accounts/constants";
+import { excludeTransactionsFromExcludedAccounts } from "@/shared/lib/accounts/query-filters";
 import { db } from "@/shared/lib/db";
 import { toDateOnlyString } from "@/shared/utils/date";
 import { safeToNumber as toNumber } from "@/shared/utils/number";
@@ -47,7 +48,7 @@ export type PayerCardUsageItem = {
 	amount: number;
 };
 
-export type PayerBoletoStats = {
+type PayerBoletoStats = {
 	totalAmount: number;
 	paidAmount: number;
 	pendingAmount: number;
@@ -62,6 +63,7 @@ export type PayerBoletoItem = {
 	dueDate: string | null;
 	boletoPaymentDate: string | null;
 	isSettled: boolean;
+	transactionType: string;
 };
 
 export type PayerPaymentStatusData = {
@@ -96,12 +98,17 @@ export async function fetchPayerMonthlyBreakdown({
 			totalAmount: sum(transactions.amount).as("total"),
 		})
 		.from(transactions)
+		.leftJoin(
+			financialAccounts,
+			eq(transactions.accountId, financialAccounts.id),
+		)
 		.where(
 			and(
 				eq(transactions.userId, userId),
 				eq(transactions.payerId, payerId),
 				eq(transactions.period, period),
 				excludeAutoInvoiceEntries(),
+				excludeTransactionsFromExcludedAccounts(),
 			),
 		)
 		.groupBy(transactions.paymentMethod, transactions.transactionType);
@@ -155,6 +162,10 @@ export async function fetchPayerHistory({
 			totalAmount: sum(transactions.amount).as("total"),
 		})
 		.from(transactions)
+		.leftJoin(
+			financialAccounts,
+			eq(transactions.accountId, financialAccounts.id),
+		)
 		.where(
 			and(
 				eq(transactions.userId, userId),
@@ -162,6 +173,7 @@ export async function fetchPayerHistory({
 				gte(transactions.period, start),
 				lte(transactions.period, end),
 				excludeAutoInvoiceEntries(),
+				excludeTransactionsFromExcludedAccounts(),
 			),
 		)
 		.groupBy(transactions.period, transactions.transactionType);
@@ -196,7 +208,7 @@ export async function fetchPayerHistory({
 	}));
 }
 
-export async function fetchPagadorCardUsage({
+export async function fetchPayerCardUsage({
 	userId,
 	payerId,
 	period,
@@ -210,6 +222,10 @@ export async function fetchPagadorCardUsage({
 		})
 		.from(transactions)
 		.innerJoin(cards, eq(transactions.cardId, cards.id))
+		.leftJoin(
+			financialAccounts,
+			eq(transactions.accountId, financialAccounts.id),
+		)
 		.where(
 			and(
 				eq(transactions.userId, userId),
@@ -217,6 +233,7 @@ export async function fetchPagadorCardUsage({
 				eq(transactions.period, period),
 				eq(transactions.paymentMethod, PAYMENT_METHOD_CARD),
 				excludeAutoInvoiceEntries(),
+				excludeTransactionsFromExcludedAccounts(),
 			),
 		)
 		.groupBy(transactions.cardId, cards.name, cards.logo);
@@ -239,7 +256,7 @@ export async function fetchPagadorCardUsage({
 	return items.sort((a, b) => b.amount - a.amount);
 }
 
-export async function fetchPagadorBoletoStats({
+export async function fetchPayerBoletoStats({
 	userId,
 	payerId,
 	period,
@@ -251,6 +268,10 @@ export async function fetchPagadorBoletoStats({
 			totalCount: sql<number>`count(${transactions.id})`.as("count"),
 		})
 		.from(transactions)
+		.leftJoin(
+			financialAccounts,
+			eq(transactions.accountId, financialAccounts.id),
+		)
 		.where(
 			and(
 				eq(transactions.userId, userId),
@@ -258,6 +279,7 @@ export async function fetchPagadorBoletoStats({
 				eq(transactions.period, period),
 				eq(transactions.paymentMethod, PAYMENT_METHOD_BOLETO),
 				excludeAutoInvoiceEntries(),
+				excludeTransactionsFromExcludedAccounts(),
 			),
 		)
 		.groupBy(transactions.isSettled);
@@ -288,7 +310,7 @@ export async function fetchPagadorBoletoStats({
 	};
 }
 
-export async function fetchPagadorBoletoItems({
+export async function fetchPayerBoletoItems({
 	userId,
 	payerId,
 	period,
@@ -301,8 +323,13 @@ export async function fetchPagadorBoletoItems({
 			dueDate: transactions.dueDate,
 			boletoPaymentDate: transactions.boletoPaymentDate,
 			isSettled: transactions.isSettled,
+			transactionType: transactions.transactionType,
 		})
 		.from(transactions)
+		.leftJoin(
+			financialAccounts,
+			eq(transactions.accountId, financialAccounts.id),
+		)
 		.where(
 			and(
 				eq(transactions.userId, userId),
@@ -310,6 +337,7 @@ export async function fetchPagadorBoletoItems({
 				eq(transactions.period, period),
 				eq(transactions.paymentMethod, PAYMENT_METHOD_BOLETO),
 				excludeAutoInvoiceEntries(),
+				excludeTransactionsFromExcludedAccounts(),
 			),
 		)
 		.orderBy(asc(transactions.dueDate));
@@ -324,13 +352,14 @@ export async function fetchPagadorBoletoItems({
 			dueDate: toDateOnlyString(row.dueDate),
 			boletoPaymentDate: toDateOnlyString(row.boletoPaymentDate),
 			isSettled: Boolean(row.isSettled),
+			transactionType: row.transactionType,
 		});
 	}
 
 	return items;
 }
 
-export async function fetchPagadorPaymentStatus({
+export async function fetchPayerPaymentStatus({
 	userId,
 	payerId,
 	period,
@@ -343,6 +372,10 @@ export async function fetchPagadorPaymentStatus({
 			pendingCount: sql<number>`sum(case when (${transactions.isSettled} = false or ${transactions.isSettled} is null) then 1 else 0 end)`,
 		})
 		.from(transactions)
+		.leftJoin(
+			financialAccounts,
+			eq(transactions.accountId, financialAccounts.id),
+		)
 		.where(
 			and(
 				eq(transactions.userId, userId),
@@ -350,6 +383,7 @@ export async function fetchPagadorPaymentStatus({
 				eq(transactions.period, period),
 				eq(transactions.transactionType, DESPESA),
 				excludeAutoInvoiceEntries(),
+				excludeTransactionsFromExcludedAccounts(),
 			),
 		);
 

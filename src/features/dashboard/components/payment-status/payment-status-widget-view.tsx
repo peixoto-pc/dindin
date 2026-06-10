@@ -1,7 +1,7 @@
 import { RiWallet3Line } from "@remixicon/react";
 import type { PaymentStatusData } from "@/features/dashboard/payments/payment-status-queries";
 import { CardContent } from "@/shared/components/ui/card";
-import { WidgetEmptyState } from "@/shared/components/widget-empty-state";
+import { WidgetEmptyState } from "@/shared/components/widgets/widget-empty-state";
 import { PaymentStatusCategorySection } from "./payment-status-category-section";
 
 type PaymentStatusWidgetViewProps = {
@@ -28,7 +28,7 @@ export function PaymentStatusWidgetView({
 	return (
 		<CardContent className="space-y-6 px-0">
 			<PaymentStatusCategorySection
-				title="A Receber"
+				type="income"
 				total={data.income.total}
 				confirmed={data.income.confirmed}
 				pending={data.income.pending}
@@ -37,7 +37,7 @@ export function PaymentStatusWidgetView({
 			<div className="border-t" />
 
 			<PaymentStatusCategorySection
-				title="A Pagar"
+				type="expenses"
 				total={data.expenses.total}
 				confirmed={data.expenses.confirmed}
 				pending={data.expenses.pending}

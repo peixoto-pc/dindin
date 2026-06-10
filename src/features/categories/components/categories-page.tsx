@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { deleteCategoryAction } from "@/features/categories/actions";
 import { ConfirmActionDialog } from "@/shared/components/confirm-action-dialog";
+import { CategoryIconBadge } from "@/shared/components/entity-avatar";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
 import {
@@ -30,10 +31,10 @@ import {
 import {
 	CATEGORY_TYPE_LABEL,
 	CATEGORY_TYPES,
+	type CategoryType,
 } from "@/shared/lib/categories/constants";
 import { CategoryDialog } from "./category-dialog";
-import { CategoryIconBadge } from "./category-icon-badge";
-import type { Category, CategoryType } from "./types";
+import type { Category } from "./types";
 
 const CATEGORIAS_PROTEGIDAS = [
 	"Transferência interna",
@@ -183,7 +184,7 @@ export function CategoriesPage({ categories }: CategoriesPageProps) {
 															<TableCell className="font-medium">
 																<Link
 																	href={`/categories/${category.id}`}
-																	className="inline-flex items-center gap-1 underline-offset-2 hover:text-primary hover:underline"
+																	className="inline-flex items-center gap-1 underline-offset-2 hover:text-primary hover:underline font-semibold"
 																>
 																	{category.name}
 																	<RiExternalLinkLine
@@ -249,7 +250,7 @@ export function CategoriesPage({ categories }: CategoriesPageProps) {
 				onOpenChange={handleRemoveOpenChange}
 				title={removeTitle}
 				description="Ao remover esta categoria, os lançamentos associados serão desrelacionados."
-				confirmLabel="Remover categoria"
+				confirmLabel="Remover"
 				pendingLabel="Removendo..."
 				confirmVariant="destructive"
 				onConfirm={handleRemoveConfirm}

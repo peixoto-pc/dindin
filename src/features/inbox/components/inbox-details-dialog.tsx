@@ -67,7 +67,7 @@ export function InboxDetailsDialog({
 					<Separator />
 
 					<div>
-						<h4 className="mb-1 text-sm font-medium text-muted-foreground">
+						<h4 className="mb-1 text-sm font-semibold text-muted-foreground">
 							Notificação Original
 						</h4>
 						{item.originalTitle && (
@@ -129,7 +129,7 @@ export function InboxDetailsDialog({
 								onProcess(item);
 							}}
 						>
-							Processar
+							Lançar
 						</Button>
 					)}
 				</DialogFooter>

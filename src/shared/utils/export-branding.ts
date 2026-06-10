@@ -65,8 +65,10 @@ export function getPrimaryPdfColor(): [number, number, number] {
 	return FALLBACK_PRIMARY_COLOR;
 }
 
+const EXPORT_LOGO_RENDER_SCALE = 4;
+
 export async function loadExportLogoDataUrl(
-	logoPath = "/images/logo_text.png",
+	logoPath = "/images/logo_text.svg",
 ): Promise<string | null> {
 	if (typeof window === "undefined" || typeof document === "undefined") {
 		return null;
@@ -77,12 +79,15 @@ export async function loadExportLogoDataUrl(
 		image.crossOrigin = "anonymous";
 
 		image.onload = () => {
-			const width = image.naturalWidth || image.width;
-			const height = image.naturalHeight || image.height;
-			if (!width || !height) {
+			const naturalWidth = image.naturalWidth || image.width;
+			const naturalHeight = image.naturalHeight || image.height;
+			if (!naturalWidth || !naturalHeight) {
 				resolve(null);
 				return;
 			}
+
+			const width = Math.round(naturalWidth * EXPORT_LOGO_RENDER_SCALE);
+			const height = Math.round(naturalHeight * EXPORT_LOGO_RENDER_SCALE);
 
 			const canvas = document.createElement("canvas");
 			canvas.width = width;

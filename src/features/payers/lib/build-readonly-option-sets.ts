@@ -5,7 +5,7 @@ import type {
 	TransactionFilterOption,
 	TransactionItem,
 } from "@/features/transactions/components/types";
-import type { buildOptionSets } from "@/features/transactions/page-helpers";
+import type { buildOptionSets } from "@/features/transactions/lib/page-helpers";
 
 type OptionSet = ReturnType<typeof buildOptionSets>;
 
@@ -50,7 +50,9 @@ export function buildReadOnlyOptionSets(
 			categoriaOptionsMap.set(item.categoryId, {
 				value: item.categoryId,
 				label: normalizeOptionLabel(item.categoriaName, "Category"),
+				group: item.categoriaType,
 				slug: item.categoryId,
+				icon: item.categoriaIcon,
 			});
 		}
 	});
@@ -67,6 +69,8 @@ export function buildReadOnlyOptionSets(
 		(option) => ({
 			slug: option.value,
 			label: option.label,
+			type: option.group,
+			icon: option.icon,
 		}),
 	);
 

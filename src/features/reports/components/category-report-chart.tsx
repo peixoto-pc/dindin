@@ -11,8 +11,8 @@ import {
 	type TooltipValueType,
 	XAxis,
 } from "recharts";
-import type { CategoryChartData } from "@/features/reports/category-chart-queries";
-import { EmptyState } from "@/shared/components/empty-state";
+import type { CategoryChartData } from "@/features/reports/lib/category-chart-queries";
+import { EmptyState } from "@/shared/components/feedback/empty-state";
 import {
 	Card,
 	CardContent,
@@ -73,7 +73,7 @@ function AreaTooltip({
 								{entry.name}
 							</span>
 						</div>
-						<span className="shrink-0 text-xs font-medium tabular-nums text-foreground">
+						<span className="shrink-0 text-xs font-medium text-foreground">
 							{currencyFormatter.format(Number(entry.value))}
 						</span>
 					</div>

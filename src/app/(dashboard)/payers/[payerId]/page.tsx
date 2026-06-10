@@ -8,7 +8,7 @@ import { connection } from "next/server";
 import { PayerCardUsageCard } from "@/features/payers/components/details/payer-card-usage-card";
 import { PayerHeaderCard } from "@/features/payers/components/details/payer-header-card";
 import { PayerHistoryCard } from "@/features/payers/components/details/payer-history-card";
-import { PagadorInfoCard } from "@/features/payers/components/details/payer-info-card";
+import { PayerInfoCard } from "@/features/payers/components/details/payer-info-card";
 import { PayerLeaveShareCard } from "@/features/payers/components/details/payer-leave-share-card";
 import { PayerMonthlySummaryCard } from "@/features/payers/components/details/payer-monthly-summary-card";
 import {
@@ -16,12 +16,12 @@ import {
 	PayerPaymentStatusCard,
 } from "@/features/payers/components/details/payer-payment-method-cards";
 import { PayerSharingCard } from "@/features/payers/components/details/payer-sharing-card";
+import { buildReadOnlyOptionSets } from "@/features/payers/lib/build-readonly-option-sets";
 import {
 	fetchCurrentUserShare,
-	fetchPagadorLancamentos,
 	fetchPayerShares,
-} from "@/features/payers/detail-queries";
-import { buildReadOnlyOptionSets } from "@/features/payers/lib/build-readonly-option-sets";
+	fetchPayerTransactions,
+} from "@/features/payers/lib/detail-queries";
 import { fetchUserPreferences } from "@/features/settings/queries";
 import { TransactionsPage as LancamentosSection } from "@/features/transactions/components/page/transactions-page";
 import {
@@ -36,12 +36,12 @@ import {
 	type SluggedFilters,
 	type SlugMaps,
 	type TransactionSearchFilters,
-} from "@/features/transactions/page-helpers";
+} from "@/features/transactions/lib/page-helpers";
 import {
 	fetchRecentEstablishments,
 	fetchTransactionFilterSources,
 } from "@/features/transactions/queries";
-import { ExpandableWidgetCard } from "@/shared/components/expandable-widget-card";
+import { LogoPrefetchProvider } from "@/shared/components/entity-avatar";
 import MonthNavigation from "@/shared/components/month-picker/month-navigation";
 import {
 	Tabs,
@@ -49,15 +49,17 @@ import {
 	TabsList,
 	TabsTrigger,
 } from "@/shared/components/ui/tabs";
+import { ExpandableWidgetCard } from "@/shared/components/widgets/expandable-widget-card";
 import { getUserId } from "@/shared/lib/auth/server";
+import { prefetchLogoMappings } from "@/shared/lib/logo/prefetch-server";
 import { getPayerAccess } from "@/shared/lib/payers/access";
 import {
-	fetchPagadorBoletoItems,
-	fetchPagadorBoletoStats,
-	fetchPagadorCardUsage,
-	fetchPagadorPaymentStatus,
+	fetchPayerBoletoItems,
+	fetchPayerBoletoStats,
+	fetchPayerCardUsage,
 	fetchPayerHistory,
 	fetchPayerMonthlyBreakdown,
+	fetchPayerPaymentStatus,
 	type PayerCardUsageItem,
 } from "@/shared/lib/payers/details";
 import { parsePeriodParam } from "@/shared/utils/period";
@@ -74,12 +76,19 @@ const capitalize = (value: string) =>
 
 const EMPTY_FILTERS: TransactionSearchFilters = {
 	transactionFilter: null,
-	conditionFilter: null,
-	paymentFilter: null,
-	payerFilter: null,
-	categoryFilter: null,
-	accountCardFilter: null,
+	conditionFilters: [],
+	paymentFilters: [],
+	payerFilters: [],
+	categoryFilters: [],
+	accountCardFilters: [],
 	searchFilter: null,
+	settledFilter: null,
+	attachmentFilter: null,
+	dividedFilter: null,
+	amountMinFilter: null,
+	amountMaxFilter: null,
+	dateStartFilter: null,
+	dateEndFilter: null,
 };
 
 const createEmptySlugMaps = (): SlugMaps => ({
@@ -177,7 +186,7 @@ export default async function Page({ params, searchParams }: PageProps) {
 		estabelecimentos,
 		userPreferences,
 	] = await Promise.all([
-		fetchPagadorLancamentos(filters),
+		fetchPayerTransactions(filters),
 		fetchPayerMonthlyBreakdown({
 			userId: dataOwnerId,
 			payerId: pagador.id,
@@ -188,22 +197,22 @@ export default async function Page({ params, searchParams }: PageProps) {
 			payerId: pagador.id,
 			period: selectedPeriod,
 		}),
-		fetchPagadorCardUsage({
+		fetchPayerCardUsage({
 			userId: dataOwnerId,
 			payerId: pagador.id,
 			period: selectedPeriod,
 		}),
-		fetchPagadorBoletoStats({
+		fetchPayerBoletoStats({
 			userId: dataOwnerId,
 			payerId: pagador.id,
 			period: selectedPeriod,
 		}),
-		fetchPagadorBoletoItems({
+		fetchPayerBoletoItems({
 			userId: dataOwnerId,
 			payerId: pagador.id,
 			period: selectedPeriod,
 		}),
-		fetchPagadorPaymentStatus({
+		fetchPayerPaymentStatus({
 			userId: dataOwnerId,
 			payerId: pagador.id,
 			period: selectedPeriod,
@@ -305,104 +314,113 @@ export default async function Page({ params, searchParams }: PageProps) {
 		lancamentoCount: transactionData.length,
 	};
 
+	const logoMappings = await prefetchLogoMappings(dataOwnerId, [
+		...transactionData.map((t) => t.name),
+		...boletoItems.map((b) => b.name),
+	]);
+
 	return (
 		<main className="flex flex-col gap-6">
 			<MonthNavigation />
 
-			<Tabs defaultValue="profile" className="w-full">
-				<TabsList className="mb-2">
-					<TabsTrigger value="profile">Perfil</TabsTrigger>
-					<TabsTrigger value="painel">Painel</TabsTrigger>
-					<TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
-				</TabsList>
-				<PayerHeaderCard
-					payer={payerData}
-					selectedPeriod={selectedPeriod}
-					summary={summaryPreview}
-				/>
+			<LogoPrefetchProvider mappings={logoMappings}>
+				<Tabs defaultValue="profile" className="w-full">
+					<TabsList className="mb-2">
+						<TabsTrigger value="profile">Perfil</TabsTrigger>
+						<TabsTrigger value="painel">Painel</TabsTrigger>
+						<TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
+					</TabsList>
+					<PayerHeaderCard
+						payer={payerData}
+						selectedPeriod={selectedPeriod}
+						summary={summaryPreview}
+					/>
 
-				<TabsContent value="profile" className="space-y-4">
-					<PagadorInfoCard payer={payerData} />
-					{canEdit && payerData.shareCode ? (
-						<PayerSharingCard
-							payerId={pagador.id}
-							shareCode={payerData.shareCode}
-							shares={payerSharesData}
-						/>
-					) : null}
-					{!canEdit && currentUserShare ? (
-						<PayerLeaveShareCard
-							shareId={currentUserShare.id}
-							pagadorName={payerData.name}
-							createdAt={currentUserShare.createdAt}
-						/>
-					) : null}
-				</TabsContent>
+					<TabsContent value="profile" className="space-y-4">
+						<PayerInfoCard payer={payerData} />
+						{canEdit && payerData.shareCode ? (
+							<PayerSharingCard
+								payerId={pagador.id}
+								shareCode={payerData.shareCode}
+								shares={payerSharesData}
+							/>
+						) : null}
+						{!canEdit && currentUserShare ? (
+							<PayerLeaveShareCard
+								shareId={currentUserShare.id}
+								pagadorName={payerData.name}
+								createdAt={currentUserShare.createdAt}
+							/>
+						) : null}
+					</TabsContent>
 
-				<TabsContent value="painel" className="space-y-4">
-					<section className="grid gap-3 lg:grid-cols-2">
-						<PayerMonthlySummaryCard
-							periodLabel={periodLabel}
-							breakdown={monthlyBreakdown}
-						/>
-						<PayerHistoryCard data={historyData} />
-					</section>
+					<TabsContent value="painel" className="space-y-4">
+						<section className="grid gap-3 lg:grid-cols-2">
+							<PayerMonthlySummaryCard
+								periodLabel={periodLabel}
+								breakdown={monthlyBreakdown}
+							/>
+							<PayerHistoryCard data={historyData} />
+						</section>
 
-					<section className="grid gap-3 lg:grid-cols-3">
-						<ExpandableWidgetCard
-							title="Minhas Faturas"
-							subtitle="Valores por cartão neste período"
-							icon={<RiBankCard2Line className="size-4" />}
-						>
-							<PayerCardUsageCard items={cardUsage} />
-						</ExpandableWidgetCard>
-						<ExpandableWidgetCard
-							title="Boletos"
-							subtitle="Boletos registrados neste período"
-							icon={<RiBarcodeLine className="size-4" />}
-						>
-							<PayerBoletoCard items={boletoItems} />
-						</ExpandableWidgetCard>
-						<ExpandableWidgetCard
-							title="Status de Pagamento"
-							subtitle="Situação das despesas no período"
-							icon={<RiWallet3Line className="size-4" />}
-						>
-							<PayerPaymentStatusCard data={paymentStatus} />
-						</ExpandableWidgetCard>
-					</section>
-				</TabsContent>
+						<section className="grid gap-3 lg:grid-cols-3">
+							<ExpandableWidgetCard
+								title="Minhas Faturas"
+								subtitle="Valores por cartão neste período"
+								icon={<RiBankCard2Line className="size-4" />}
+							>
+								<PayerCardUsageCard items={cardUsage} />
+							</ExpandableWidgetCard>
+							<ExpandableWidgetCard
+								title="Boletos"
+								subtitle="Boletos registrados neste período"
+								icon={<RiBarcodeLine className="size-4" />}
+							>
+								<PayerBoletoCard items={boletoItems} />
+							</ExpandableWidgetCard>
+							<ExpandableWidgetCard
+								title="Status de Pagamento"
+								subtitle="Situação das despesas no período"
+								icon={<RiWallet3Line className="size-4" />}
+							>
+								<PayerPaymentStatusCard data={paymentStatus} />
+							</ExpandableWidgetCard>
+						</section>
+					</TabsContent>
 
-				<TabsContent value="lancamentos">
-					<section className="flex flex-col gap-4">
-						<LancamentosSection
-							currentUserId={userId}
-							transactions={transactionData}
-							payerOptions={optionSets.payerOptions}
-							splitPayerOptions={optionSets.splitPayerOptions}
-							defaultPayerId={pagador.id}
-							accountOptions={optionSets.accountOptions}
-							cardOptions={optionSets.cardOptions}
-							categoryOptions={optionSets.categoryOptions}
-							payerFilterOptions={payerFilterOptions}
-							categoryFilterOptions={optionSets.categoryFilterOptions}
-							accountCardFilterOptions={optionSets.accountCardFilterOptions}
-							selectedPeriod={selectedPeriod}
-							estabelecimentos={estabelecimentos}
-							allowCreate={canEdit}
-							noteAsColumn={userPreferences?.statementNoteAsColumn ?? false}
-							columnOrder={userPreferences?.transactionsColumnOrder ?? null}
-							attachmentMaxSizeMb={userPreferences?.attachmentMaxSizeMb ?? 50}
-							importPayerOptions={loggedUserOptionSets?.payerOptions}
-							importSplitPayerOptions={loggedUserOptionSets?.splitPayerOptions}
-							importDefaultPayerId={loggedUserOptionSets?.defaultPayerId}
-							importAccountOptions={loggedUserOptionSets?.accountOptions}
-							importCardOptions={loggedUserOptionSets?.cardOptions}
-							importCategoryOptions={loggedUserOptionSets?.categoryOptions}
-						/>
-					</section>
-				</TabsContent>
-			</Tabs>
+					<TabsContent value="lancamentos">
+						<section className="flex flex-col gap-4">
+							<LancamentosSection
+								currentUserId={userId}
+								transactions={transactionData}
+								payerOptions={optionSets.payerOptions}
+								splitPayerOptions={optionSets.splitPayerOptions}
+								defaultPayerId={pagador.id}
+								accountOptions={optionSets.accountOptions}
+								cardOptions={optionSets.cardOptions}
+								categoryOptions={optionSets.categoryOptions}
+								payerFilterOptions={payerFilterOptions}
+								categoryFilterOptions={optionSets.categoryFilterOptions}
+								accountCardFilterOptions={optionSets.accountCardFilterOptions}
+								selectedPeriod={selectedPeriod}
+								estabelecimentos={estabelecimentos}
+								allowCreate={canEdit}
+								noteAsColumn={userPreferences?.statementNoteAsColumn ?? false}
+								columnOrder={userPreferences?.transactionsColumnOrder ?? null}
+								attachmentMaxSizeMb={userPreferences?.attachmentMaxSizeMb ?? 50}
+								importPayerOptions={loggedUserOptionSets?.payerOptions}
+								importSplitPayerOptions={
+									loggedUserOptionSets?.splitPayerOptions
+								}
+								importDefaultPayerId={loggedUserOptionSets?.defaultPayerId}
+								importAccountOptions={loggedUserOptionSets?.accountOptions}
+								importCardOptions={loggedUserOptionSets?.cardOptions}
+								importCategoryOptions={loggedUserOptionSets?.categoryOptions}
+							/>
+						</section>
+					</TabsContent>
+				</Tabs>
+			</LogoPrefetchProvider>
 		</main>
 	);
 }

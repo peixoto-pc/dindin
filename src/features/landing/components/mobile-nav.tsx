@@ -3,7 +3,7 @@
 import { RiArrowRightSLine, RiMenuLine } from "@remixicon/react";
 import Link from "next/link";
 import { useState } from "react";
-import { Logo } from "@/shared/components/logo";
+import { Logo } from "@/shared/components/brand/logo";
 import { Button } from "@/shared/components/ui/button";
 import {
 	Sheet,
@@ -13,7 +13,6 @@ import {
 } from "@/shared/components/ui/sheet";
 
 const navLinks = [
-	{ href: "#telas", label: "Conheça as telas" },
 	{ href: "#funcionalidades", label: "Funcionalidades" },
 	{ href: "#mobile", label: "Mobile" },
 	{ href: "#stack", label: "Stack" },
@@ -24,9 +23,14 @@ const navLinks = [
 interface MobileNavProps {
 	isPublicDomain: boolean;
 	isLoggedIn: boolean;
+	signupDisabled: boolean;
 }
 
-export function MobileNav({ isPublicDomain, isLoggedIn }: MobileNavProps) {
+export function MobileNav({
+	isPublicDomain,
+	isLoggedIn,
+	signupDisabled,
+}: MobileNavProps) {
 	const [open, setOpen] = useState(false);
 
 	return (
@@ -76,12 +80,14 @@ export function MobileNav({ isPublicDomain, isLoggedIn }: MobileNavProps) {
 											Entrar
 										</Button>
 									</Link>
-									<Link href="/signup" onClick={() => setOpen(false)}>
-										<Button className="w-full gap-2">
-											Começar
-											<RiArrowRightSLine size={16} />
-										</Button>
-									</Link>
+									{!signupDisabled && (
+										<Link href="/signup" onClick={() => setOpen(false)}>
+											<Button className="w-full gap-2">
+												Começar
+												<RiArrowRightSLine size={16} />
+											</Button>
+										</Link>
+									)}
 								</>
 							)}
 						</div>

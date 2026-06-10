@@ -1,13 +1,15 @@
 "use client";
 
 import { RiLoader4Line } from "@remixicon/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { CategoryIcon } from "@/features/categories/components/category-icon";
 import {
 	createInstallmentAnticipationAction,
 	getEligibleInstallmentsAction,
-} from "@/features/transactions/anticipation-actions";
+} from "@/features/transactions/actions/anticipation";
+import { installmentAnticipationsQueryKey } from "@/features/transactions/hooks/use-installment-anticipations";
 import MoneyValues from "@/shared/components/money-values";
 import { PeriodPicker } from "@/shared/components/period-picker";
 import { Button } from "@/shared/components/ui/button";
@@ -70,6 +72,7 @@ export function AnticipateInstallmentsDialog({
 	open,
 	onOpenChange,
 }: AnticipateInstallmentsDialogProps) {
+	const queryClient = useQueryClient();
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [isPending, startTransition] = useTransition();
 	const [isLoadingInstallments, setIsLoadingInstallments] = useState(false);
@@ -86,7 +89,7 @@ export function AnticipateInstallmentsDialog({
 	);
 
 	// Use form state hook for form management
-	const { formState, replaceForm, updateField } =
+	const { formState, replaceForm, updateField, updateFields } =
 		useFormState<AnticipationFormValues>({
 			anticipationPeriod: defaultPeriod,
 			discount: "0",
@@ -95,15 +98,34 @@ export function AnticipateInstallmentsDialog({
 			note: "",
 		});
 
-	// Buscar parcelas elegíveis ao abrir o dialog
+	// Resetar formulário ao abrir o dialog
 	useEffect(() => {
 		if (dialogOpen) {
+			setSelectedIds([]);
+			setErrorMessage(null);
+			replaceForm({
+				anticipationPeriod: defaultPeriod,
+				discount: "0",
+				payerId: "",
+				categoryId: "",
+				note: "",
+			});
+		}
+	}, [defaultPeriod, dialogOpen, replaceForm]);
+
+	// Buscar parcelas elegíveis ao abrir o dialog e ao trocar o período
+	useEffect(() => {
+		if (dialogOpen) {
+			let shouldUpdate = true;
+
 			setIsLoadingInstallments(true);
 			setSelectedIds([]);
 			setErrorMessage(null);
 
-			getEligibleInstallmentsAction(seriesId)
+			getEligibleInstallmentsAction(seriesId, formState.anticipationPeriod)
 				.then((result) => {
+					if (!shouldUpdate) return;
+
 					if (!result.success) {
 						toast.error(result.error || "Erro ao carregar parcelas");
 						setEligibleInstallments([]);
@@ -116,25 +138,30 @@ export function AnticipateInstallmentsDialog({
 					// Pré-preencher pagador e categoria da primeira parcela
 					if (installments.length > 0) {
 						const first = installments[0];
-						replaceForm({
-							anticipationPeriod: defaultPeriod,
-							discount: "0",
+						updateFields({
 							payerId: first.payerId ?? "",
 							categoryId: first.categoryId ?? "",
-							note: "",
 						});
 					}
 				})
 				.catch((error) => {
+					if (!shouldUpdate) return;
+
 					console.error("Erro ao buscar parcelas:", error);
 					toast.error("Erro ao carregar parcelas elegíveis");
 					setEligibleInstallments([]);
 				})
 				.finally(() => {
+					if (!shouldUpdate) return;
+
 					setIsLoadingInstallments(false);
 				});
+
+			return () => {
+				shouldUpdate = false;
+			};
 		}
-	}, [defaultPeriod, dialogOpen, replaceForm, seriesId]);
+	}, [dialogOpen, formState.anticipationPeriod, seriesId, updateFields]);
 
 	const totalAmount = useMemo(() => {
 		return eligibleInstallments
@@ -189,6 +216,9 @@ export function AnticipateInstallmentsDialog({
 
 			if (result.success) {
 				toast.success(result.message);
+				void queryClient.invalidateQueries({
+					queryKey: installmentAnticipationsQueryKey(seriesId),
+				});
 				setDialogOpen(false);
 			} else {
 				const errorMsg = result.error || "Erro ao criar antecipação";
@@ -240,7 +270,7 @@ export function AnticipateInstallmentsDialog({
 
 						<div className="grid gap-2 sm:grid-cols-2">
 							<Field className="gap-1">
-								<FieldLabel htmlFor="anticipation-period">Período</FieldLabel>
+								<FieldLabel htmlFor="anticipation-period">Fatura</FieldLabel>
 								<FieldContent>
 									<PeriodPicker
 										value={formState.anticipationPeriod}
@@ -269,7 +299,7 @@ export function AnticipateInstallmentsDialog({
 							</Field>
 
 							<Field className="gap-1">
-								<FieldLabel htmlFor="anticipation-pagador">Pagador</FieldLabel>
+								<FieldLabel htmlFor="anticipation-pagador">Pessoa</FieldLabel>
 								<FieldContent>
 									<Select
 										value={formState.payerId}
@@ -292,7 +322,7 @@ export function AnticipateInstallmentsDialog({
 
 							<Field className="gap-1">
 								<FieldLabel htmlFor="anticipation-categoria">
-									Category
+									Categoria
 								</FieldLabel>
 								<FieldContent>
 									<Select
@@ -341,22 +371,22 @@ export function AnticipateInstallmentsDialog({
 
 					{/* Seção 3: Resumo */}
 					{selectedIds.length > 0 && (
-						<div className="rounded-lg border bg-muted/20 p-3">
-							<h4 className="text-sm font-medium mb-2">Resumo</h4>
+						<div className="rounded-lg border p-3">
+							<h4 className="text-sm font-semibold mb-2">Resumo</h4>
 							<dl className="space-y-1.5 text-sm">
 								<div className="flex items-center justify-between">
 									<dt className="text-muted-foreground">
 										{selectedIds.length} parcela
 										{selectedIds.length > 1 ? "s" : ""}
 									</dt>
-									<dd className="font-medium tabular-nums">
+									<dd className="font-medium">
 										<MoneyValues amount={totalAmount} className="text-sm" />
 									</dd>
 								</div>
 								{Number(formState.discount) > 0 && (
 									<div className="flex items-center justify-between">
 										<dt className="text-muted-foreground">Desconto</dt>
-										<dd className="font-medium tabular-nums text-success">
+										<dd className="font-medium text-success">
 											-{" "}
 											<MoneyValues
 												amount={Number(formState.discount)}
@@ -367,7 +397,7 @@ export function AnticipateInstallmentsDialog({
 								)}
 								<div className="flex items-center justify-between border-t pt-1.5">
 									<dt className="font-medium">Total</dt>
-									<dd className="text-base font-medium tabular-nums text-primary">
+									<dd className="text-base font-semibold text-primary">
 										<MoneyValues amount={finalAmount} className="text-sm" />
 									</dd>
 								</div>

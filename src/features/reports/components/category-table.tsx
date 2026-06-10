@@ -3,9 +3,8 @@
 import { RiInformationLine } from "@remixicon/react";
 import Link from "next/link";
 import { useMemo } from "react";
-import { formatPeriodLabel } from "@/features/reports/utils";
+import { formatPeriodLabel } from "@/features/reports/lib/utils";
 import { CategoryIconBadge } from "@/shared/components/entity-avatar";
-import StatusDot from "@/shared/components/status-dot";
 import { Card } from "@/shared/components/ui/card";
 import {
 	Table,
@@ -26,7 +25,7 @@ import { formatCurrency } from "@/shared/utils/currency";
 import { formatPeriodForUrl } from "@/shared/utils/period";
 import { CategoryCell } from "./category-cell";
 
-export interface CategoryTableProps {
+interface CategoryTableProps {
 	title: string;
 	categories: CategoryReportItem[];
 	periods: string[];
@@ -37,6 +36,13 @@ export function CategoryTable({
 	categories,
 	periods,
 }: CategoryTableProps) {
+	const categoryColumnLabel =
+		title === "Despesas"
+			? "Categoria Despesa"
+			: title === "Receitas"
+				? "Categoria Receita"
+				: "Categoria";
+
 	// Calculate section totals
 	const sectionTotals = useMemo(() => {
 		const totalsMap = new Map<string, number>();
@@ -73,17 +79,17 @@ export function CategoryTable({
 				<TableHeader>
 					<TableRow>
 						<TableHead className="w-[240px] min-w-[240px] font-medium">
-							Categoria
+							{categoryColumnLabel}
 						</TableHead>
 						{periods.map((period) => (
 							<TableHead
 								key={period}
-								className="text-right min-w-[120px] font-medium"
+								className="text-right min-w-[120px] font-semibold"
 							>
 								{formatPeriodLabel(period)}
 							</TableHead>
 						))}
-						<TableHead className="text-right min-w-[140px] font-medium">
+						<TableHead className="text-right min-w-[140px] font-semibold">
 							<div className="flex items-center justify-end gap-1">
 								Média
 								<Tooltip>
@@ -100,7 +106,7 @@ export function CategoryTable({
 								</Tooltip>
 							</div>
 						</TableHead>
-						<TableHead className="text-right min-w-[120px] font-medium">
+						<TableHead className="text-right min-w-[120px] font-semibold">
 							Total
 						</TableHead>
 					</TableRow>
@@ -114,21 +120,13 @@ export function CategoryTable({
 							<TableRow key={category.categoryId}>
 								<TableCell>
 									<div className="flex items-center gap-2">
-										<StatusDot
-											color={
-												category.type === "receita"
-													? "bg-success"
-													: "bg-destructive"
-											}
-										/>
-
 										<CategoryIconBadge
 											icon={category.icon}
 											name={category.name}
 										/>
 										<Link
 											href={`/categories/${category.categoryId}?periodo=${periodParam}`}
-											className="flex items-center gap-1.5 truncate hover:underline underline-offset-2"
+											className="flex items-center gap-1.5 truncate hover:underline underline-offset-2 font-semibold"
 										>
 											{category.name}
 										</Link>
@@ -149,7 +147,7 @@ export function CategoryTable({
 										</TableCell>
 									);
 								})}
-								<TableCell className="text-right font-medium text-info">
+								<TableCell className="text-right font-semibold text-info">
 									{(() => {
 										const nonZeroCount = periods.filter(
 											(p) => (category.monthlyData.get(p)?.amount ?? 0) > 0,
@@ -178,10 +176,10 @@ export function CategoryTable({
 								</TableCell>
 							);
 						})}
-						<TableCell className="text-right font-medium text-info">
+						<TableCell className="text-right font-semibold text-info">
 							{formatCurrency(sectionTotals.averageMonthlyTotal)}
 						</TableCell>
-						<TableCell className="text-right font-medium">
+						<TableCell className="text-right font-semibold">
 							{formatCurrency(sectionTotals.grandTotal)}
 						</TableCell>
 					</TableRow>

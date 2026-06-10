@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import {
 	formatPercentageChange,
 	formatPeriodLabel,
-} from "@/features/reports/utils";
+} from "@/features/reports/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import {
 	DropdownMenu,
@@ -224,8 +224,8 @@ export function CategoryReportExport({
 			const doc = new jsPDF({ orientation: "landscape" });
 			const primaryColor = getPrimaryPdfColor();
 			const [smallLogoDataUrl, textLogoDataUrl] = await Promise.all([
-				loadExportLogoDataUrl("/images/logo_small.png"),
-				loadExportLogoDataUrl("/images/logo_text.png"),
+				loadExportLogoDataUrl("/images/logo_small.svg"),
+				loadExportLogoDataUrl("/images/logo_text.svg"),
 			]);
 			let brandingEndX = 14;
 

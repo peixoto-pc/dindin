@@ -1,6 +1,7 @@
 "use client";
 
 import { RiDashboardLine, RiMenuLine } from "@remixicon/react";
+
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { CalculatorDialogContent } from "@/shared/components/calculator/calculator-dialog";
@@ -21,18 +22,27 @@ import {
 	SheetTrigger,
 } from "@/shared/components/ui/sheet";
 import { cn } from "@/shared/utils/ui";
-import { MobileLink, MobileSectionLabel } from "./mobile-link";
+import {
+	MobileFinanceEntityLinks,
+	MobileLink,
+	MobileSectionLabel,
+} from "./mobile-link";
 import { NavDropdown } from "./nav-dropdown";
-import { NAV_SECTIONS } from "./nav-items";
+import { NAV_SECTIONS, type NavbarFinanceLinks } from "./nav-items";
 import { NavPill } from "./nav-pill";
 import { MobileTools, NavToolsDropdown } from "./nav-tools";
 
 const triggerClass =
-	"h-8! rounded-md! px-2! py-0! text-sm! font-medium! bg-transparent! shadow-none! lowercase! [&_svg]:text-current! text-black/75! hover:text-black! hover:bg-black/10! focus:text-black! focus:bg-black/10! focus-visible:ring-black/20! data-[state=open]:text-black! data-[state=open]:bg-black/10!";
+	"h-9! px-2! py-0! bg-transparent! capitalize! [&_svg]:text-current! text-primary-foreground/75! hover:text-primary-foreground! hover:bg-primary-foreground/10! focus:text-primary-foreground! focus:bg-primary-foreground/10! focus-visible:ring-primary-foreground/20! data-[state=open]:text-primary-foreground! data-[state=open]:bg-primary-foreground/10! dark:text-foreground/75! dark:hover:text-foreground! dark:hover:bg-foreground/10! dark:focus:text-foreground! dark:focus:bg-foreground/10! dark:focus-visible:ring-foreground/20! dark:data-[state=open]:text-foreground! dark:data-[state=open]:bg-foreground/10!";
 
-const triggerActiveClass = "bg-black/15! text-black!";
+const triggerActiveClass =
+	"bg-primary-foreground/15! text-primary-foreground! dark:bg-foreground/15! dark:text-foreground!";
 
-export function NavMenu() {
+export function NavMenu({
+	financeLinks,
+}: {
+	financeLinks: NavbarFinanceLinks;
+}) {
 	const pathname = usePathname();
 	const [sheetOpen, setSheetOpen] = useState(false);
 	const [calculatorOpen, setCalculatorOpen] = useState(false);
@@ -42,9 +52,12 @@ export function NavMenu() {
 	return (
 		<>
 			{/* Desktop */}
-			<nav className="hidden md:flex items-center justify-center flex-1 ">
+			<nav
+				aria-label="Navegação principal"
+				className="hidden md:flex items-center justify-center flex-1 gap-4"
+			>
 				<NavigationMenu viewport={false}>
-					<NavigationMenuList className="gap-0">
+					<NavigationMenuList className="gap-2">
 						<NavigationMenuItem>
 							<NavPill href="/dashboard" preservePeriod>
 								Dashboard
@@ -63,12 +76,24 @@ export function NavMenu() {
 										className={cn(
 											triggerClass,
 											isSectionActive && triggerActiveClass,
+											"capitalize",
 										)}
 									>
 										{section.label}
 									</NavigationMenuTrigger>
-									<NavigationMenuContent>
-										<NavDropdown items={section.items} />
+									<NavigationMenuContent
+										className={
+											section.label === "Finanças"
+												? "overflow-visible!"
+												: undefined
+										}
+									>
+										<NavDropdown
+											items={section.items}
+											financeLinks={
+												section.label === "Finanças" ? financeLinks : undefined
+											}
+										/>
 									</NavigationMenuContent>
 								</NavigationMenuItem>
 							);
@@ -94,7 +119,7 @@ export function NavMenu() {
 						size="icon-sm"
 						className="-order-1 md:hidden"
 					>
-						<RiMenuLine className="size-5" />
+						<RiMenuLine className="size-5" aria-hidden />
 						<span className="sr-only">Abrir menu</span>
 					</Button>
 				</SheetTrigger>
@@ -102,10 +127,13 @@ export function NavMenu() {
 					<SheetHeader className="border-b border-border/60 p-4">
 						<SheetTitle>Menu</SheetTitle>
 					</SheetHeader>
-					<nav className="p-3 overflow-y-auto">
+					<nav
+						className="p-3 overflow-y-auto"
+						aria-label="Menu principal mobile"
+					>
 						<MobileLink
 							href="/dashboard"
-							icon={<RiDashboardLine className="size-4" />}
+							icon={<RiDashboardLine className="size-4" aria-hidden />}
 							onClick={close}
 							preservePeriod
 						>
@@ -121,17 +149,33 @@ export function NavMenu() {
 								<div key={section.label}>
 									<MobileSectionLabel label={section.label} />
 									{mobileItems.map((item) => (
-										<MobileLink
-											key={item.href}
-											href={item.href}
-											icon={item.icon}
-											onClick={close}
-											badge={item.badge}
-											preservePeriod={item.preservePeriod}
-											description={item.description}
-										>
-											{item.label}
-										</MobileLink>
+										<div key={item.href}>
+											<MobileLink
+												href={item.href}
+												icon={item.icon}
+												onClick={close}
+												badge={item.badge}
+												preservePeriod={item.preservePeriod}
+												description={item.description}
+											>
+												{item.label}
+											</MobileLink>
+											{item.href === "/cards" && financeLinks.cards.length ? (
+												<MobileFinanceEntityLinks
+													type="cards"
+													items={financeLinks.cards}
+													onClick={close}
+												/>
+											) : null}
+											{item.href === "/accounts" &&
+											financeLinks.accounts.length ? (
+												<MobileFinanceEntityLinks
+													type="accounts"
+													items={financeLinks.accounts}
+													onClick={close}
+												/>
+											) : null}
+										</div>
 									))}
 								</div>
 							);

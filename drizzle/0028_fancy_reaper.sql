@@ -1,0 +1,1 @@
+ALTER TABLE "pagadores" ALTER COLUMN "share_code" DROP DEFAULT;

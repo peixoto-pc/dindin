@@ -24,7 +24,7 @@ import {
 	DEFAULT_CARD_BRANDS,
 	DEFAULT_CARD_STATUS,
 } from "@/shared/lib/cards/constants";
-import { deriveNameFromLogo, normalizeLogo } from "@/shared/lib/logo";
+import { getLogoDisplayName, normalizeLogo } from "@/shared/lib/logo";
 import {
 	formatLimitInput,
 	normalizeDecimalInput,
@@ -59,7 +59,7 @@ const buildInitialValues = ({
 }): CardFormValues => {
 	const fallbackLogo = logoOptions[0] ?? "";
 	const selectedLogo = normalizeLogo(card?.logo) || fallbackLogo;
-	const derivedName = deriveNameFromLogo(selectedLogo);
+	const derivedName = getLogoDisplayName(selectedLogo);
 
 	return {
 		name: card?.name ?? derivedName,
@@ -154,13 +154,21 @@ export function CardDialog({
 		}
 
 		const rawLimit = normalizeDecimalInput(formState.limit);
+		const limitValue = rawLimit ? Number(rawLimit) : 0;
+		if (!Number.isFinite(limitValue) || limitValue <= 0) {
+			const message = "Informe um limite maior que zero.";
+			setErrorMessage(message);
+			toast.error(message);
+			return;
+		}
+
 		const payload: CardCreatePayload = {
 			name: formState.name.trim(),
 			brand: formState.brand,
 			status: formState.status,
 			closingDay: formState.closingDay,
 			dueDay: formState.dueDay,
-			limit: rawLimit ? Number(rawLimit) : null,
+			limit: limitValue,
 			note: formState.note.trim() || null,
 			logo: formState.logo,
 			accountId: formState.accountId,
@@ -194,12 +202,12 @@ export function CardDialog({
 		});
 	};
 
-	const title = mode === "create" ? "Novo cartão" : "Editar cartão";
+	const title = mode === "create" ? "Novo cartão" : "Atualizar cartão";
 	const description =
 		mode === "create"
 			? "Inclua um novo cartão de crédito para acompanhar seus gastos."
 			: "Atualize as informações do cartão selecionado.";
-	const submitLabel = mode === "create" ? "Salvar cartão" : "Atualizar cartão";
+	const submitLabel = mode === "create" ? "Salvar" : "Atualizar";
 
 	const handleMainDialogOpenChange = (open: boolean) => {
 		if (!open && logoDialogOpen) {

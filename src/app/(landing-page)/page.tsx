@@ -9,7 +9,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { AnimateOnScroll } from "@/features/landing/components/animate-on-scroll";
 import { MobileNav } from "@/features/landing/components/mobile-nav";
-import { ScreenshotTabs } from "@/features/landing/components/screenshot-tabs";
 import { SetupTabs } from "@/features/landing/components/setup-tabs";
 import {
 	companionBanks,
@@ -25,13 +24,13 @@ import {
 import { landingImages } from "@/features/landing/images";
 import { fetchGitHubStats } from "@/features/landing/queries";
 import { AnimatedThemeToggler } from "@/shared/components/animated-theme-toggler";
-import { Logo } from "@/shared/components/logo";
+import { Logo } from "@/shared/components/brand/logo";
 import { NavbarShell } from "@/shared/components/navigation/navbar/navbar-shell";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
-import { DotPattern } from "@/shared/components/ui/dot-pattern";
 import { getOptionalUserSession } from "@/shared/lib/auth/server";
+import { isSignupDisabled } from "@/shared/lib/auth/signup";
 
 export default async function Page() {
 	const [session, headersList, githubStats] = await Promise.all([
@@ -45,6 +44,7 @@ export default async function Page() {
 		"",
 	).replace(/:\d+$/, "");
 	const isPublicDomain = !!(publicDomain && hostname === publicDomain);
+	const signupDisabled = isSignupDisabled();
 	const metricsItems = getMetricsItems(githubStats.stars, githubStats.forks);
 
 	return (
@@ -52,81 +52,73 @@ export default async function Page() {
 			{/* Navigation */}
 			<NavbarShell>
 				{/* Center Navigation Links */}
-				<nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+				<nav className="hidden md:flex items-center gap-1 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
 					{navLinks.map(({ href, label }) => (
-						<a
+						<Link
 							key={href}
 							href={href}
-							className="rounded-md px-2 py-1.5 text-sm font-medium text-black/75 hover:text-black hover:bg-black/10 transition-colors"
+							className="inline-flex h-9 items-center justify-center rounded-md px-2 text-sm font-medium leading-none text-primary-foreground/75 transition-colors hover:bg-primary-foreground/10 hover:text-primary-foreground dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white"
 						>
 							{label}
-						</a>
+						</Link>
 					))}
 				</nav>
 
-				<nav className="ml-auto flex items-center gap-2 md:gap-3">
+				<nav className="ml-auto flex items-center gap-1">
 					<AnimatedThemeToggler variant="navbar" />
 					{!isPublicDomain &&
 						(session?.user ? (
 							<Link prefetch href="/dashboard" className="hidden md:block">
 								<Button
-									variant="outline"
+									variant="navbar"
 									size="sm"
-									className="border-black/20 text-black/80 bg-transparent hover:bg-black/10 hover:text-black shadow-none"
+									className="h-9 text-primary-foreground/75 hover:bg-primary-foreground/10 hover:text-primary-foreground shadow-none dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white"
 								>
 									Dashboard
 								</Button>
 							</Link>
 						) : (
-							<div className="hidden md:flex items-center gap-2">
+							<div className="hidden md:flex items-center gap-1">
 								<Link href="/login">
 									<Button
 										variant="ghost"
 										size="sm"
-										className="text-black/75 hover:bg-black/10 hover:text-black shadow-none"
+										className="h-9 text-primary-foreground/75 hover:bg-primary-foreground/10 hover:text-primary-foreground shadow-none dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white"
 									>
 										Entrar
 									</Button>
 								</Link>
-								<Link href="/signup">
-									<Button
-										size="sm"
-										className="bg-black/10 border border-black/20 text-black shadow-none hover:bg-black/20 gap-2"
-									>
-										Começar
-									</Button>
-								</Link>
+								{!signupDisabled && (
+									<Link href="/signup">
+										<Button
+											variant="ghost"
+											size="sm"
+											className="h-9 text-primary-foreground/75 hover:bg-primary-foreground/10 hover:text-primary-foreground shadow-none dark:text-white/75 dark:hover:bg-white/10 dark:hover:text-white"
+										>
+											Começar
+										</Button>
+									</Link>
+								)}
 							</div>
 						))}
 					<MobileNav
 						isPublicDomain={isPublicDomain}
 						isLoggedIn={!!session?.user}
+						signupDisabled={signupDisabled}
 					/>
 				</nav>
 			</NavbarShell>
 
 			{/* Hero Section */}
 			<section className="relative overflow-hidden pt-14 md:pt-20 lg:pt-24 pb-0">
-				<div className="pointer-events-none absolute inset-x-0 top-0 h-80 overflow-hidden">
-					<DotPattern
-						width={20}
-						height={20}
-						cx={1.25}
-						cy={1.25}
-						cr={1.25}
-						className="text-primary/10 mask-[linear-gradient(to_bottom,black_0%,transparent_100%)]"
-					/>
-					<div className="absolute inset-0 bg-linear-to-b from-primary/6 to-transparent" />
-				</div>
-
 				<div className="max-w-8xl mx-auto px-4 relative">
-					<div className="mx-auto flex max-w-3xl flex-col items-center text-center gap-5 md:gap-6 pb-10 md:pb-14">
+					<div className="mx-auto flex max-w-4xl flex-col items-center text-center gap-5 md:gap-6 pb-10 md:pb-14">
 						<Badge variant="outline">
 							<RiGithubFill className="size-4 mr-1" />
 							Projeto Open Source
 						</Badge>
 
-						<h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-medium tracking-tight">
+						<h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold">
 							Suas finanças,
 							<span className="text-primary"> do seu jeito</span>
 						</h1>
@@ -207,7 +199,7 @@ export default async function Page() {
 									className="flex flex-col items-center text-center gap-1.5"
 								>
 									<Icon className="size-5" style={{ color: colorVar }} />
-									<span className="text-2xl md:text-3xl font-medium">
+									<span className="text-2xl md:text-3xl font-semibold">
 										{value}
 									</span>
 									<span className="text-xs md:text-sm text-muted-foreground">
@@ -220,33 +212,8 @@ export default async function Page() {
 				</div>
 			</section>
 
-			{/* Screenshots Gallery Section */}
-			<section id="telas" className="py-12 md:py-24">
-				<div className="max-w-8xl mx-auto px-4">
-					<div className="mx-auto max-w-6xl">
-						<AnimateOnScroll>
-							<div className="text-center mb-8 md:mb-12">
-								<Badge variant="outline" className="mb-4">
-									Conheça as telas
-								</Badge>
-								<h2 className="text-2xl sm:text-3xl md:text-4xl font-medium tracking-tight mb-3 md:mb-4">
-									Veja o que você pode fazer
-								</h2>
-								<p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto px-4 sm:px-0">
-									Explore as principais telas do OpenMonetis
-								</p>
-							</div>
-						</AnimateOnScroll>
-
-						<AnimateOnScroll>
-							<ScreenshotTabs />
-						</AnimateOnScroll>
-					</div>
-				</div>
-			</section>
-
 			{/* Features Section */}
-			<section id="funcionalidades" className="py-12 md:py-24 bg-muted/40">
+			<section id="funcionalidades" className="py-12 md:py-24">
 				<div className="max-w-8xl mx-auto px-4">
 					<div className="mx-auto max-w-6xl">
 						<AnimateOnScroll>
@@ -254,7 +221,7 @@ export default async function Page() {
 								<Badge variant="outline" className="mb-4">
 									O que tem aqui
 								</Badge>
-								<h2 className="text-2xl sm:text-3xl md:text-4xl font-medium tracking-tight mb-3 md:mb-4">
+								<h2 className="text-2xl sm:text-3xl md:text-4xl mb-3 md:mb-4 font-semibold">
 									Funcionalidades que importam
 								</h2>
 								<p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto px-4 sm:px-0">
@@ -265,70 +232,32 @@ export default async function Page() {
 						</AnimateOnScroll>
 
 						<AnimateOnScroll>
-							<div className="grid gap-4 md:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-								{mainFeatures.map((feature) => (
+							<div className="grid gap-4 md:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+								{[...mainFeatures, ...extraFeatures].map((feature) => (
 									<Card key={feature.title}>
-										<CardContent className="pt-5 pb-5 md:pt-6">
-											<div className="flex flex-col gap-3 md:gap-4">
+										<CardContent>
+											<div className="flex items-center gap-3 mb-3">
 												<div
-													className="flex h-11 w-11 md:h-12 md:w-12 items-center justify-center rounded-lg"
+													className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
 													style={{
-														backgroundColor: `color-mix(in oklch, ${feature.colorVar} 14%, transparent)`,
+														backgroundColor: `color-mix(in oklch, ${feature.colorVar} 20%, transparent)`,
 													}}
 												>
 													<feature.icon
-														className="size-[22px] md:size-6"
-														style={{ color: feature.colorVar }}
+														className="size-5"
+														style={{ color: "var(--foreground)" }}
 													/>
 												</div>
-												<div>
-													<h3 className="font-medium text-base md:text-lg mb-1.5 md:mb-2">
-														{feature.title}
-													</h3>
-													<p className="text-sm text-muted-foreground leading-relaxed">
-														{feature.description}
-													</p>
-												</div>
+												<h3 className="font-semibold text-base leading-tight">
+													{feature.title}
+												</h3>
 											</div>
+											<p className="text-sm text-muted-foreground leading-relaxed">
+												{feature.description}
+											</p>
 										</CardContent>
 									</Card>
 								))}
-							</div>
-						</AnimateOnScroll>
-
-						<AnimateOnScroll>
-							<div className="mt-8 md:mt-12">
-								<h3 className="text-sm font-medium text-center mb-4 md:mb-6 text-muted-foreground">
-									Também inclui
-								</h3>
-								<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-									{extraFeatures.map((feature) => (
-										<div
-											key={feature.title}
-											className="flex items-start gap-3 rounded-lg border bg-card p-3 md:p-4"
-										>
-											<div
-												className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
-												style={{
-													backgroundColor: `color-mix(in oklch, ${feature.colorVar} 14%, transparent)`,
-												}}
-											>
-												<feature.icon
-													className="size-[18px]"
-													style={{ color: feature.colorVar }}
-												/>
-											</div>
-											<div className="min-w-0">
-												<h4 className="font-medium text-sm mb-0.5">
-													{feature.title}
-												</h4>
-												<p className="text-xs text-muted-foreground leading-relaxed">
-													{feature.description}
-												</p>
-											</div>
-										</div>
-									))}
-								</div>
 							</div>
 						</AnimateOnScroll>
 					</div>
@@ -346,7 +275,7 @@ export default async function Page() {
 									<RiSmartphoneLine className="size-3.5 mr-1" />
 									Mobile
 								</Badge>
-								<h2 className="text-2xl sm:text-3xl md:text-4xl font-medium tracking-tight mb-3 md:mb-4">
+								<h2 className="text-2xl sm:text-3xl md:text-4xl mb-3 md:mb-4 font-semibold">
 									Use o OpenMonetis no celular sem perder o fluxo
 								</h2>
 								<p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto px-4 sm:px-0">
@@ -396,14 +325,14 @@ export default async function Page() {
 										{pwaHighlights.map((item) => (
 											<li key={item.title} className="flex items-start gap-3">
 												<div
-													className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
+													className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
 													style={{
-														backgroundColor: `color-mix(in oklch, ${item.colorVar} 14%, transparent)`,
+														backgroundColor: `color-mix(in oklch, ${item.colorVar} 20%, transparent)`,
 													}}
 												>
 													<item.icon
 														className="size-[15px]"
-														style={{ color: item.colorVar }}
+														style={{ color: "var(--foreground)" }}
 													/>
 												</div>
 												<p className="text-sm">
@@ -438,17 +367,19 @@ export default async function Page() {
 										pré-lançamentos automaticamente para você revisar na inbox.
 									</p>
 									<ol className="space-y-3 mb-6">
-										{companionSteps.map((step, index) => (
+										{companionSteps.map((step) => (
 											<li key={step.title} className="flex items-start gap-3">
-												<span
-													className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium"
+												<div
+													className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
 													style={{
-														backgroundColor: `color-mix(in oklch, ${step.colorVar} 14%, transparent)`,
-														color: step.colorVar,
+														backgroundColor: `color-mix(in oklch, ${step.colorVar} 20%, transparent)`,
 													}}
 												>
-													{index + 1}
-												</span>
+													<step.icon
+														className="size-3.5"
+														style={{ color: "var(--foreground)" }}
+													/>
+												</div>
 												<p className="text-sm">
 													<span className="font-medium">{step.title}</span>
 													<span className="text-muted-foreground">
@@ -521,7 +452,7 @@ export default async function Page() {
 			</section>
 
 			{/* Tech Stack Section */}
-			<section id="stack" className="py-12 md:py-24 bg-muted/40">
+			<section id="stack" className="py-12 md:py-24">
 				<div className="max-w-8xl mx-auto px-4">
 					<div className="mx-auto max-w-6xl">
 						<AnimateOnScroll>
@@ -529,7 +460,7 @@ export default async function Page() {
 								<Badge variant="outline" className="mb-4">
 									Stack técnica
 								</Badge>
-								<h2 className="text-2xl sm:text-3xl md:text-4xl font-medium tracking-tight mb-3 md:mb-4">
+								<h2 className="text-2xl sm:text-3xl md:text-4xl mb-3 md:mb-4 font-semibold">
 									O que roda por baixo
 								</h2>
 								<p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto px-4 sm:px-0">
@@ -545,18 +476,18 @@ export default async function Page() {
 										<CardContent>
 											<div className="flex items-start gap-4">
 												<div
-													className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg"
+													className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
 													style={{
-														backgroundColor: `color-mix(in oklch, ${item.colorVar} 14%, transparent)`,
+														backgroundColor: `color-mix(in oklch, ${item.colorVar} 20%, transparent)`,
 													}}
 												>
 													<item.icon
 														className="size-6"
-														style={{ color: item.colorVar }}
+														style={{ color: "var(--foreground)" }}
 													/>
 												</div>
 												<div>
-													<h3 className="font-medium text-base md:text-lg mb-1.5 md:mb-2">
+													<h3 className="font-semibold text-base md:text-lg mb-1.5 md:mb-2">
 														{item.title}
 													</h3>
 													<p className="text-sm text-muted-foreground mb-2 md:mb-3">
@@ -582,7 +513,7 @@ export default async function Page() {
 								<Badge variant="outline" className="mb-4">
 									Como usar
 								</Badge>
-								<h2 className="text-2xl sm:text-3xl md:text-4xl font-medium tracking-tight mb-3 md:mb-4">
+								<h2 className="text-2xl sm:text-3xl md:text-4xl mb-3 md:mb-4 font-semibold">
 									Rode no seu computador
 								</h2>
 								<p className="text-base md:text-lg text-muted-foreground px-4 sm:px-0">
@@ -609,7 +540,7 @@ export default async function Page() {
 			</section>
 
 			{/* Who is this for Section */}
-			<section id="para-quem-e" className="py-12 md:py-24 bg-muted/40">
+			<section id="para-quem-e" className="py-12 md:py-24">
 				<div className="max-w-8xl mx-auto px-4">
 					<div className="mx-auto max-w-4xl">
 						<AnimateOnScroll>
@@ -617,7 +548,7 @@ export default async function Page() {
 								<Badge variant="outline" className="mb-4">
 									Para quem é?
 								</Badge>
-								<h2 className="text-2xl sm:text-3xl md:text-4xl font-medium tracking-tight mb-3 md:mb-4">
+								<h2 className="text-2xl sm:text-3xl md:text-4xl mb-3 md:mb-4 font-semibold">
 									Feito para quem gosta de controle
 								</h2>
 								<p className="text-base md:text-lg text-muted-foreground px-4 sm:px-0">
@@ -633,18 +564,18 @@ export default async function Page() {
 										<CardContent>
 											<div className="flex gap-3 md:gap-4">
 												<div
-													className="flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-lg"
+													className="flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-full"
 													style={{
-														backgroundColor: `color-mix(in oklch, ${item.colorVar} 14%, transparent)`,
+														backgroundColor: `color-mix(in oklch, ${item.colorVar} 20%, transparent)`,
 													}}
 												>
 													<item.icon
 														className="size-[18px] md:size-5"
-														style={{ color: item.colorVar }}
+														style={{ color: "var(--foreground)" }}
 													/>
 												</div>
 												<div>
-													<h3 className="font-medium mb-1">{item.title}</h3>
+													<h3 className="font-semibold mb-1">{item.title}</h3>
 													<p className="text-xs sm:text-sm text-muted-foreground">
 														{item.description}
 													</p>
@@ -664,7 +595,7 @@ export default async function Page() {
 				<div className="max-w-8xl mx-auto px-4">
 					<AnimateOnScroll>
 						<div className="mx-auto max-w-4xl rounded-2xl border bg-card px-8 py-12 md:py-16 text-center">
-							<h2 className="text-2xl sm:text-3xl md:text-4xl font-medium tracking-tight mb-3 md:mb-4">
+							<h2 className="text-2xl sm:text-3xl md:text-4xl mb-3 md:mb-4 font-semibold">
 								Pronto para testar?
 							</h2>
 							<p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8">
@@ -715,7 +646,7 @@ export default async function Page() {
 							</div>
 
 							<div>
-								<h3 className="font-medium mb-3 md:mb-4">Projeto</h3>
+								<h3 className="font-semibold mb-3 md:mb-4">Projeto</h3>
 								<ul className="space-y-2.5 md:space-y-3 text-sm text-muted-foreground">
 									<li>
 										<Link
@@ -749,7 +680,7 @@ export default async function Page() {
 							</div>
 
 							<div>
-								<h3 className="font-medium mb-3 md:mb-4">Companion</h3>
+								<h3 className="font-semibold mb-3 md:mb-4">Companion</h3>
 								<ul className="space-y-2.5 md:space-y-3 text-sm text-muted-foreground">
 									<li>
 										<Link

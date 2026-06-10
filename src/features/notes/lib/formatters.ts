@@ -5,11 +5,13 @@ type NoteTasksSummaryInput = {
 
 const NOTE_CREATED_AT_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
 	dateStyle: "medium",
+	timeZone: "America/Sao_Paulo",
 });
 
 const NOTE_CREATED_AT_LONG_FORMATTER = new Intl.DateTimeFormat("pt-BR", {
 	dateStyle: "long",
 	timeStyle: "short",
+	timeZone: "America/Sao_Paulo",
 });
 
 const parseNoteDate = (value: string | Date | null | undefined) => {
@@ -40,7 +42,7 @@ export const formatNoteCreatedAt = (
 	value: string | Date | null | undefined,
 ) => {
 	const parsed = parseNoteDate(value);
-	return parsed ? NOTE_CREATED_AT_FORMATTER.format(parsed) : null;
+	return parsed ? NOTE_CREATED_AT_FORMATTER.format(parsed) : "";
 };
 
 export const formatNoteCreatedAtLong = (

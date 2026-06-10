@@ -17,7 +17,7 @@ import {
 	PopoverTrigger,
 } from "@/shared/components/ui/popover";
 
-export interface EstabelecimentoInputProps {
+interface EstablishmentInputProps {
 	id?: string;
 	value: string;
 	onChange: (value: string) => void;
@@ -27,7 +27,7 @@ export interface EstabelecimentoInputProps {
 	maxLength?: number;
 }
 
-export function EstabelecimentoInput({
+export function EstablishmentInput({
 	id,
 	value,
 	onChange,
@@ -35,9 +35,16 @@ export function EstabelecimentoInput({
 	placeholder = "Ex.: Padaria, Transferência, Saldo inicial",
 	required = false,
 	maxLength = 20,
-}: EstabelecimentoInputProps) {
+}: EstablishmentInputProps) {
 	const [open, setOpen] = React.useState(false);
 	const [searchValue, setSearchValue] = React.useState("");
+	const [width, setWidth] = React.useState<number | undefined>();
+	const containerRef = React.useRef<HTMLDivElement>(null);
+
+	React.useEffect(() => {
+		if (!open || !containerRef.current) return;
+		setWidth(containerRef.current.offsetWidth);
+	}, [open]);
 
 	const handleSelect = (selectedValue: string) => {
 		onChange(selectedValue);
@@ -50,7 +57,6 @@ export function EstabelecimentoInput({
 		onChange(newValue);
 		setSearchValue(newValue);
 
-		// Open popover when user types and there are suggestions
 		if (newValue.length > 0 && estabelecimentos.length > 0) {
 			setOpen(true);
 		}
@@ -68,7 +74,7 @@ export function EstabelecimentoInput({
 	return (
 		<Popover open={open} onOpenChange={setOpen} modal>
 			<PopoverTrigger asChild>
-				<div className="relative">
+				<div ref={containerRef} className="relative w-full">
 					<Input
 						id={id}
 						value={value}
@@ -86,7 +92,8 @@ export function EstabelecimentoInput({
 			</PopoverTrigger>
 			{estabelecimentos.length > 0 && (
 				<PopoverContent
-					className="p-0 w-[--radix-popover-trigger-width]"
+					className="p-0"
+					style={width ? { width } : undefined}
 					align="start"
 					onOpenAutoFocus={(e) => e.preventDefault()}
 				>

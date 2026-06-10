@@ -1,6 +1,6 @@
 "use client";
 
-import { RiEditLine } from "@remixicon/react";
+import { RiEditLine, RiEqualizerLine } from "@remixicon/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -10,11 +10,30 @@ import {
 	updateInvoicePaymentStatusAction,
 	updatePaymentDateAction,
 } from "@/features/invoices/actions";
+import { AccountCardSelectContent } from "@/features/transactions/components/select-items";
+import StatusDot from "@/shared/components/feedback/status-dot";
 import MoneyValues from "@/shared/components/money-values";
-import StatusDot from "@/shared/components/status-dot";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent } from "@/shared/components/ui/card";
+import { DatePicker } from "@/shared/components/ui/date-picker";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/shared/components/ui/dialog";
+import { Label } from "@/shared/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/shared/components/ui/select";
 import { resolveCardBrandAsset } from "@/shared/lib/cards/brand-assets";
 import {
 	INVOICE_PAYMENT_STATUS,
@@ -27,7 +46,14 @@ import { resolveLogoSrc } from "@/shared/lib/logo";
 import { formatCurrency } from "@/shared/utils/currency";
 import { formatDateOnly } from "@/shared/utils/date";
 import { cn } from "@/shared/utils/ui";
+import { AdjustInvoiceDialog } from "./adjust-invoice-dialog";
 import { EditPaymentDateDialog } from "./edit-payment-date-dialog";
+
+type PaymentAccountOption = {
+	value: string;
+	label: string;
+	logo?: string | null;
+};
 
 type InvoiceSummaryCardProps = {
 	cardId: string;
@@ -42,6 +68,8 @@ type InvoiceSummaryCardProps = {
 	limitAmount: number | null;
 	invoiceStatus: InvoicePaymentStatus;
 	paymentDate: Date | null;
+	defaultPaymentAccountId: string | null;
+	paymentAccountOptions: PaymentAccountOption[];
 	logo?: string | null;
 	actions?: React.ReactNode;
 };
@@ -87,6 +115,8 @@ export function InvoiceSummaryCard({
 	limitAmount,
 	invoiceStatus,
 	paymentDate: initialPaymentDate,
+	defaultPaymentAccountId,
+	paymentAccountOptions,
 	logo,
 	actions,
 }: InvoiceSummaryCardProps) {
@@ -95,10 +125,20 @@ export function InvoiceSummaryCard({
 	const [paymentDate, setPaymentDate] = useState<Date>(
 		initialPaymentDate ?? new Date(),
 	);
+	const [paymentAccountId, setPaymentAccountId] = useState<string>(
+		defaultPaymentAccountId ?? paymentAccountOptions[0]?.value ?? "",
+	);
+	const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
 
 	useEffect(() => {
 		setPaymentDate(initialPaymentDate ?? new Date());
 	}, [initialPaymentDate]);
+
+	useEffect(() => {
+		setPaymentAccountId(
+			defaultPaymentAccountId ?? paymentAccountOptions[0]?.value ?? "",
+		);
+	}, [defaultPaymentAccountId, paymentAccountOptions]);
 
 	const logoPath = resolveLogoSrc(logo);
 	const brandAsset = resolveCardBrandAsset(cardBrand);
@@ -112,7 +152,7 @@ export function InvoiceSummaryCard({
 		? INVOICE_PAYMENT_STATUS.PENDING
 		: INVOICE_PAYMENT_STATUS.PAID;
 
-	const handleAction = () => {
+	const handleAction = (accountId?: string) => {
 		startTransition(async () => {
 			const result = await updateInvoicePaymentStatusAction({
 				cardId,
@@ -122,16 +162,28 @@ export function InvoiceSummaryCard({
 					targetStatus === INVOICE_PAYMENT_STATUS.PAID
 						? paymentDate.toISOString().split("T")[0]
 						: undefined,
+				paymentAccountId:
+					targetStatus === INVOICE_PAYMENT_STATUS.PAID ? accountId : undefined,
 			});
 
 			if (result.success) {
 				toast.success(result.message);
+				setPaymentDialogOpen(false);
 				router.refresh();
 				return;
 			}
 
 			toast.error(result.error);
 		});
+	};
+
+	const handlePaymentConfirm = () => {
+		if (!paymentAccountId) {
+			toast.error("Selecione uma conta para pagar a fatura.");
+			return;
+		}
+
+		handleAction(paymentAccountId);
 	};
 
 	const handleDateChange = (newDate: Date) => {
@@ -176,7 +228,7 @@ export function InvoiceSummaryCard({
 								</span>
 							) : null}
 							<div className="min-w-0">
-								<h2 className="truncate text-sm font-medium text-foreground">
+								<h2 className="truncate text-sm font-semibold text-foreground">
 									{cardName}
 								</h2>
 								<p className="text-xs text-muted-foreground">
@@ -188,17 +240,33 @@ export function InvoiceSummaryCard({
 					</div>
 
 					{/* Linha 2 — valor da fatura (hero) */}
-					<div className="space-y-4">
-						<p className="text-sm font-medium text-muted-foreground">
-							Valor da fatura
-						</p>
-						<MoneyValues
-							amount={totalAmount}
-							className={cn(
-								"text-3xl leading-none font-medium tracking-tight sm:text-[2rem]",
-								isPaid ? "text-success" : "text-foreground",
-							)}
-						/>
+					<div className="space-y-3">
+						<p className="text-sm text-muted-foreground">Valor da fatura</p>
+						<div className="flex items-center gap-2">
+							<MoneyValues
+								amount={Math.abs(totalAmount)}
+								className={cn(
+									"text-3xl leading-none tracking-tighter sm:text-2xl",
+									isPaid ? "text-success" : "text-foreground",
+								)}
+							/>
+							<AdjustInvoiceDialog
+								cardId={cardId}
+								period={period}
+								currentTotal={totalAmount}
+								trigger={
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon-sm"
+										className="text-primary hover:text-primary"
+										aria-label="Ajustar fatura"
+									>
+										<RiEqualizerLine className="size-4" />
+									</Button>
+								}
+							/>
+						</div>
 						<div className="flex items-center gap-2">
 							<Badge
 								variant={INVOICE_STATUS_BADGE_VARIANT[invoiceStatus]}
@@ -230,7 +298,7 @@ export function InvoiceSummaryCard({
 						</MetaItem>
 
 						{typeof limitAmount === "number" ? (
-							<MetaItem label="Limite">
+							<MetaItem label="Limite total">
 								<span className="text-sm font-medium text-foreground">
 									{formatCurrency(limitAmount)}
 								</span>
@@ -265,16 +333,45 @@ export function InvoiceSummaryCard({
 							</p>
 						</div>
 						<div className="flex shrink-0 items-center gap-1.5">
-							<Button
-								type="button"
-								size="sm"
-								variant={actionVariantByStatus[invoiceStatus]}
-								disabled={isPending}
-								onClick={handleAction}
-								className="min-w-32"
-							>
-								{isPending ? "Salvando..." : actionLabelByStatus[invoiceStatus]}
-							</Button>
+							{isPaid ? (
+								<Button
+									type="button"
+									size="sm"
+									variant={actionVariantByStatus[invoiceStatus]}
+									disabled={isPending}
+									onClick={() => handleAction()}
+									className="min-w-32"
+								>
+									{isPending
+										? "Salvando..."
+										: actionLabelByStatus[invoiceStatus]}
+								</Button>
+							) : (
+								<PayInvoiceDialog
+									open={paymentDialogOpen}
+									onOpenChange={setPaymentDialogOpen}
+									isPending={isPending}
+									paymentDate={paymentDate}
+									onPaymentDateChange={setPaymentDate}
+									accountId={paymentAccountId}
+									onAccountChange={setPaymentAccountId}
+									accountOptions={paymentAccountOptions}
+									onConfirm={handlePaymentConfirm}
+									trigger={
+										<Button
+											type="button"
+											size="sm"
+											variant={actionVariantByStatus[invoiceStatus]}
+											disabled={isPending}
+											className="min-w-32"
+										>
+											{isPending
+												? "Salvando..."
+												: actionLabelByStatus[invoiceStatus]}
+										</Button>
+									}
+								/>
+							)}
 							{isPaid ? (
 								<EditPaymentDateDialog
 									trigger={
@@ -308,5 +405,114 @@ function MetaItem({ label, children }: { label: string; children: ReactNode }) {
 			</span>
 			<div className="mt-1">{children}</div>
 		</div>
+	);
+}
+
+type PayInvoiceDialogProps = {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	isPending: boolean;
+	paymentDate: Date;
+	onPaymentDateChange: (date: Date) => void;
+	accountId: string;
+	onAccountChange: (accountId: string) => void;
+	accountOptions: PaymentAccountOption[];
+	onConfirm: () => void;
+	trigger: ReactNode;
+};
+
+function PayInvoiceDialog({
+	open,
+	onOpenChange,
+	isPending,
+	paymentDate,
+	onPaymentDateChange,
+	accountId,
+	onAccountChange,
+	accountOptions,
+	onConfirm,
+	trigger,
+}: PayInvoiceDialogProps) {
+	const paymentDateValue = paymentDate.toISOString().split("T")[0] ?? "";
+	const selectedAccount = accountOptions.find(
+		(option) => option.value === accountId,
+	);
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogTrigger asChild>{trigger}</DialogTrigger>
+			<DialogContent className="sm:max-w-md">
+				<DialogHeader>
+					<DialogTitle>Confirmar pagamento</DialogTitle>
+					<DialogDescription>
+						Escolha a conta de origem e a data em que a fatura foi paga.
+					</DialogDescription>
+				</DialogHeader>
+
+				<div className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor="invoice-payment-account">Conta de pagamento</Label>
+						<Select
+							value={accountId}
+							onValueChange={onAccountChange}
+							disabled={isPending || accountOptions.length === 0}
+						>
+							<SelectTrigger id="invoice-payment-account" className="w-full">
+								<SelectValue placeholder="Selecione uma conta">
+									{selectedAccount ? (
+										<AccountCardSelectContent
+											label={selectedAccount.label}
+											logo={selectedAccount.logo}
+										/>
+									) : null}
+								</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								{accountOptions.map((option) => (
+									<SelectItem key={option.value} value={option.value}>
+										<AccountCardSelectContent
+											label={option.label}
+											logo={option.logo}
+										/>
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+
+					<div className="space-y-2">
+						<Label htmlFor="invoice-payment-date">Data do pagamento</Label>
+						<DatePicker
+							id="invoice-payment-date"
+							value={paymentDateValue}
+							onChange={(value) => {
+								if (value) {
+									onPaymentDateChange(new Date(`${value}T00:00:00`));
+								}
+							}}
+							disabled={isPending}
+						/>
+					</div>
+				</div>
+
+				<DialogFooter>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => onOpenChange(false)}
+						disabled={isPending}
+					>
+						Cancelar
+					</Button>
+					<Button
+						type="button"
+						onClick={onConfirm}
+						disabled={isPending || accountOptions.length === 0}
+					>
+						{isPending ? "Confirmando..." : "Confirmar pagamento"}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	);
 }

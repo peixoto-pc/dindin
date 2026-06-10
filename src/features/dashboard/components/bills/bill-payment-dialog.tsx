@@ -1,5 +1,4 @@
 import {
-	RiBarcodeFill,
 	RiCalendarLine,
 	RiLoader4Line,
 	RiMoneyDollarCircleLine,
@@ -8,12 +7,20 @@ import {
 	type BillDialogState,
 	formatBillDateLabel,
 	getBillStatusBadgeVariant,
-} from "@/features/dashboard/bills-helpers";
-import type { DashboardBill } from "@/features/dashboard/bills-queries";
+	isIncomeBill,
+} from "@/features/dashboard/bills/bills-helpers";
+import type {
+	BillPaymentAccountOption,
+	DashboardBill,
+} from "@/features/dashboard/bills/bills-queries";
+import { AccountCardSelectContent } from "@/features/transactions/components/select-items";
+import { EstablishmentLogo } from "@/shared/components/entity-avatar";
+import { PaymentSuccess } from "@/shared/components/feedback/payment-success";
 import MoneyValues from "@/shared/components/money-values";
-import { PaymentSuccess } from "@/shared/components/payment-success";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
+import { Card } from "@/shared/components/ui/card";
+import { DatePicker } from "@/shared/components/ui/date-picker";
 import {
 	Dialog,
 	DialogContent,
@@ -22,12 +29,26 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/shared/components/ui/dialog";
+import { Label } from "@/shared/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/shared/components/ui/select";
+import { Separator } from "@/shared/components/ui/separator";
 
 type BillPaymentDialogProps = {
 	bill: DashboardBill | null;
 	open: boolean;
 	modalState: BillDialogState;
 	isPending: boolean;
+	paymentAccountId: string;
+	onPaymentAccountChange: (accountId: string) => void;
+	paymentDate: Date;
+	onPaymentDateChange: (date: Date) => void;
+	paymentAccountOptions: BillPaymentAccountOption[];
 	onClose: () => void;
 	onConfirm: () => void;
 };
@@ -37,13 +58,28 @@ export function BillPaymentDialog({
 	open,
 	modalState,
 	isPending,
+	paymentAccountId,
+	onPaymentAccountChange,
+	paymentDate,
+	onPaymentDateChange,
+	paymentAccountOptions,
 	onClose,
 	onConfirm,
 }: BillPaymentDialogProps) {
 	const isProcessing = modalState === "processing" || isPending;
+	const income = bill ? isIncomeBill(bill) : false;
+	const settlementLabel = income ? "Recebido" : "Pago";
 	const dueLabel = bill
 		? formatBillDateLabel(bill.dueDate, "Vencimento:")
 		: null;
+	const paidLabel = bill
+		? formatBillDateLabel(bill.boletoPaymentDate, `${settlementLabel} em:`)
+		: null;
+	const isBillPending = bill ? !bill.isSettled : false;
+	const paymentDateValue = paymentDate.toISOString().split("T")[0] ?? "";
+	const selectedAccount = paymentAccountOptions.find(
+		(option) => option.value === paymentAccountId,
+	);
 
 	return (
 		<Dialog
@@ -70,21 +106,22 @@ export function BillPaymentDialog({
 			>
 				{modalState === "success" ? (
 					<PaymentSuccess
-						title="Pagamento registrado!"
-						description="Atualizamos o status do boleto para pago. Em instantes ele aparecerá como baixado no histórico."
+						title={income ? "Recebimento registrado!" : "Pagamento registrado!"}
+						description={`Atualizamos o status do boleto para ${income ? "recebido" : "pago"}. Em instantes ele aparecerá como baixado no histórico.`}
 						onClose={onClose}
 					/>
 				) : (
 					<>
 						<DialogHeader>
 							<div className="mb-1 flex items-center gap-3">
-								<div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
-									<RiBarcodeFill className="size-5 text-primary" />
-								</div>
 								<div>
-									<DialogTitle>Confirmar pagamento</DialogTitle>
-									<DialogDescription className="mt-0.5 text-xs">
-										Boleto
+									<DialogTitle>
+										{income ? "Confirmar recebimento" : "Confirmar pagamento"}
+									</DialogTitle>
+									<DialogDescription className="mt-1 text-xs">
+										{isBillPending
+											? `Escolha a conta de ${income ? "destino" : "origem"} e a data em que o boleto foi ${income ? "recebido" : "pago"}.`
+											: "Boleto"}
 									</DialogDescription>
 								</div>
 							</div>
@@ -92,62 +129,121 @@ export function BillPaymentDialog({
 
 						{bill ? (
 							<div className="space-y-3">
-								{/* Card principal */}
-								<div className="rounded-xl border p-3">
-									<p className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-										Boleto
-									</p>
-									<p className="text-base font-medium text-foreground">
-										{bill.name}
-									</p>
-								</div>
+								<Card className="flex flex-row items-start gap-2 p-4">
+									<EstablishmentLogo
+										name={bill.name}
+										size={36}
+										className="size-9 shrink-0"
+									/>
+									<div className="min-w-0">
+										<p className="text-xs font-medium text-muted-foreground uppercase">
+											Boleto
+										</p>
+										<p className="truncate text-base font-semibold text-foreground">
+											{bill.name}
+										</p>
+									</div>
+								</Card>
 
-								{/* Métricas */}
 								<div className="grid grid-cols-2 gap-3">
-									<div className="rounded-xl border p-3">
-										<div className="mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+									<Card className="p-3">
+										<div className="flex items-center gap-1.5 text-muted-foreground">
 											<RiMoneyDollarCircleLine className="size-3.5" />
-											<span className="text-xs font-medium uppercase tracking-wide">
+											<span className="text-xs font-medium uppercase">
 												Valor
 											</span>
 										</div>
 										<MoneyValues
 											amount={bill.amount}
-											className="text-lg font-medium"
+											className="text-xl font-semibold"
 										/>
-									</div>
+									</Card>
 
-									<div className="rounded-xl border p-3">
-										<div className="mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+									<Card className="p-3">
+										<div className="flex items-center gap-1.5 text-muted-foreground">
 											<RiCalendarLine className="size-3.5" />
-											<span className="text-xs font-medium uppercase tracking-wide">
-												Vencimento
+											<span className="text-xs font-medium uppercase">
+												{bill.isSettled
+													? `${settlementLabel} em`
+													: "Vencimento"}
 											</span>
 										</div>
-										<p className="text-sm font-medium text-foreground">
-											{dueLabel?.replace("Vencimento: ", "") ?? "—"}
+										<p className="font-semibold">
+											{bill.isSettled
+												? (paidLabel?.replace(`${settlementLabel} em: `, "") ??
+													"—")
+												: (dueLabel?.replace("Vencimento: ", "") ?? "—")}
 										</p>
+									</Card>
+								</div>
+
+								<Separator />
+
+								{isBillPending ? (
+									<div className="space-y-3">
+										<div className="space-y-2">
+											<Label htmlFor="bill-widget-payment-account">
+												Conta de {income ? "recebimento" : "pagamento"}
+											</Label>
+											<Select
+												value={paymentAccountId}
+												onValueChange={onPaymentAccountChange}
+												disabled={
+													isProcessing || paymentAccountOptions.length === 0
+												}
+											>
+												<SelectTrigger
+													id="bill-widget-payment-account"
+													className="w-full"
+												>
+													<SelectValue placeholder="Selecione uma conta">
+														{selectedAccount ? (
+															<AccountCardSelectContent
+																label={selectedAccount.label}
+																logo={selectedAccount.logo}
+															/>
+														) : null}
+													</SelectValue>
+												</SelectTrigger>
+												<SelectContent>
+													{paymentAccountOptions.map((option) => (
+														<SelectItem key={option.value} value={option.value}>
+															<AccountCardSelectContent
+																label={option.label}
+																logo={option.logo}
+															/>
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
+
+										<div className="space-y-2">
+											<Label htmlFor="bill-widget-payment-date">
+												Data do {income ? "recebimento" : "pagamento"}
+											</Label>
+											<DatePicker
+												id="bill-widget-payment-date"
+												value={paymentDateValue}
+												onChange={(value) => {
+													if (value) {
+														onPaymentDateChange(new Date(`${value}T00:00:00`));
+													}
+												}}
+												disabled={isProcessing}
+											/>
+										</div>
 									</div>
-								</div>
-
-								{/* Status */}
-								<div className="flex items-center justify-between rounded-xl border p-3">
-									<span className="text-sm text-muted-foreground">
-										Status atual
-									</span>
-									<Badge
-										variant={getBillStatusBadgeVariant(
-											bill.isSettled ? "Pago" : "Pendente",
-										)}
-									>
-										{bill.isSettled ? "Pago" : "Pendente"}
-									</Badge>
-								</div>
-
-								{/* Aviso */}
-								<p className="px-1 text-xs text-muted-foreground">
-									Você poderá editar o lançamento depois, se necessário.
-								</p>
+								) : (
+									<div className="flex items-center justify-between rounded-xl border p-3">
+										<span className="text-sm text-muted-foreground">
+											Status atual
+										</span>
+										<Badge variant={getBillStatusBadgeVariant(settlementLabel)}>
+											{settlementLabel}
+										</Badge>
+									</div>
+								)}
 							</div>
 						) : null}
 
@@ -163,7 +259,13 @@ export function BillPaymentDialog({
 							<Button
 								type="button"
 								onClick={onConfirm}
-								disabled={isProcessing || !bill || bill.isSettled}
+								disabled={
+									isProcessing ||
+									!bill ||
+									bill.isSettled ||
+									(isBillPending &&
+										(!paymentAccountId || paymentAccountOptions.length === 0))
+								}
 							>
 								{isProcessing ? (
 									<>
@@ -171,7 +273,7 @@ export function BillPaymentDialog({
 										Processando...
 									</>
 								) : (
-									"Confirmar pagamento"
+									"Confirmar"
 								)}
 							</Button>
 						</DialogFooter>

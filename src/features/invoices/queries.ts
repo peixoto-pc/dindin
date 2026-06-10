@@ -1,5 +1,6 @@
-import { and, desc, eq, type SQL, sum } from "drizzle-orm";
+import { and, eq, type SQL, sum } from "drizzle-orm";
 import { cards, invoices, transactions } from "@/db/schema";
+import { fetchTransactionsWithRelations } from "@/features/transactions/queries";
 import { buildInvoicePaymentNote } from "@/shared/lib/accounts/constants";
 import { db } from "@/shared/lib/db";
 import {
@@ -104,14 +105,5 @@ export async function fetchInvoiceData(
 }
 
 export async function fetchCardTransactions(filters: SQL[]) {
-	return db.query.transactions.findMany({
-		where: and(...filters),
-		with: {
-			payer: true,
-			financialAccount: true,
-			card: true,
-			category: true,
-		},
-		orderBy: desc(transactions.purchaseDate),
-	});
+	return fetchTransactionsWithRelations({ filters });
 }

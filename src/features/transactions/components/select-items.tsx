@@ -3,7 +3,7 @@
 import { RiBankCard2Line, RiBankLine } from "@remixicon/react";
 import Image from "next/image";
 import { CategoryIcon } from "@/features/categories/components/category-icon";
-import StatusDot from "@/shared/components/status-dot";
+import StatusDot from "@/shared/components/feedback/status-dot";
 import {
 	Avatar,
 	AvatarFallback,
@@ -29,9 +29,9 @@ export function PayerSelectContent({
 
 	return (
 		<span className="flex items-center gap-2">
-			<Avatar className="size-5 border border-border/60 bg-background">
+			<Avatar className="size-6 border border-border/60 bg-background">
 				<AvatarImage src={avatarSrc} alt={`Avatar de ${label}`} />
-				<AvatarFallback className="text-[10px] font-medium uppercase">
+				<AvatarFallback className="text-xs font-medium uppercase">
 					{initial}
 				</AvatarFallback>
 			</Avatar>

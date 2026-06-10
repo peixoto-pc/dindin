@@ -7,6 +7,7 @@ import {
 	RiFileList2Line,
 	RiInboxUnarchiveLine,
 	RiPencilLine,
+	RiSubtractLine,
 } from "@remixicon/react";
 import {
 	buildNoteDisplayTitle,
@@ -77,7 +78,7 @@ export function NoteCard({
 			<CardContent className="flex min-h-0 flex-1 flex-col gap-4">
 				<div className="flex shrink-0 items-start justify-between gap-3">
 					<div className="flex min-w-0 flex-col gap-1">
-						<h3 className="text-lg font-medium leading-tight text-foreground wrap-break-word">
+						<h3 className="text-lg font-semibold text-foreground wrap-break-word">
 							{displayTitle}
 						</h3>
 						{createdAtLabel && (
@@ -97,15 +98,11 @@ export function NoteCard({
 					<div className="min-h-0 flex-1 space-y-2 overflow-hidden">
 						{sortedTasks.slice(0, 5).map((task) => (
 							<div key={task.id} className="flex items-start gap-2 text-sm">
-								<div
-									className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border ${
-										task.completed
-											? "bg-success border-success"
-											: "border-input"
-									}`}
-								>
-									{task.completed && (
-										<RiCheckLine className="h-3 w-3 text-background" />
+								<div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center">
+									{task.completed ? (
+										<RiCheckLine className="h-4 w-4 text-success" />
+									) : (
+										<RiSubtractLine className="h-4 w-4 text-muted-foreground" />
 									)}
 								</div>
 								<span

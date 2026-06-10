@@ -26,6 +26,7 @@ type AccountStatementCardProps = {
 	totalExpenses: number;
 	logo?: string | null;
 	actions?: React.ReactNode;
+	balanceAdjustment?: React.ReactNode;
 };
 
 const getAccountStatusBadgeVariant = (
@@ -45,6 +46,7 @@ export function AccountStatementCard({
 	totalExpenses,
 	logo,
 	actions,
+	balanceAdjustment,
 }: AccountStatementCardProps) {
 	const logoPath = resolveLogoSrc(logo);
 	const resultado = totalIncomes - totalExpenses;
@@ -68,7 +70,7 @@ export function AccountStatementCard({
 								</div>
 							) : null}
 							<div className="min-w-0">
-								<h2 className="truncate text-sm font-medium text-foreground">
+								<h2 className="truncate text-sm font-semibold text-foreground">
 									{accountName}
 								</h2>
 								<p className="text-xs text-muted-foreground">
@@ -80,14 +82,17 @@ export function AccountStatementCard({
 					</div>
 
 					{/* Linha 2 — saldo final (hero) */}
-					<div className="space-y-4">
-						<p className="text-sm font-medium text-muted-foreground ">
+					<div className="space-y-3">
+						<p className="text-sm text-muted-foreground ">
 							Saldo ao final do período
 						</p>
-						<MoneyValues
-							amount={currentBalance}
-							className="text-3xl leading-none font-medium tracking-tight sm:text-[2rem]"
-						/>
+						<div className="flex items-center gap-2">
+							<MoneyValues
+								amount={currentBalance}
+								className="text-3xl leading-none tracking-tighter sm:text-2xl"
+							/>
+							{balanceAdjustment}
+						</div>
 						<div className="flex items-center gap-2">
 							<Badge
 								variant={getAccountStatusBadgeVariant(status)}
@@ -123,7 +128,7 @@ export function AccountStatementCard({
 
 						<MetaItem
 							label="Saídas"
-							tooltip="Total de despesas pagas neste mês (considerando divisão entre pagadores)."
+							tooltip="Total de despesas pagas neste mês (considerando divisão entre pessoas)."
 						>
 							<span className="text-sm font-medium text-destructive">
 								{formatCurrency(totalExpenses)}

@@ -32,57 +32,69 @@ export const user = pgTable("user", {
 	}).notNull(),
 });
 
-export const account = pgTable("account", {
-	id: text("id").primaryKey(),
-	accountId: text("accountId").notNull(),
-	providerId: text("providerId").notNull(),
-	userId: text("userId")
-		.notNull()
-		.references(() => user.id, { onDelete: "cascade" }),
-	accessToken: text("accessToken"),
-	refreshToken: text("refreshToken"),
-	idToken: text("idToken"),
-	accessTokenExpiresAt: timestamp("accessTokenExpiresAt", {
-		mode: "date",
-		withTimezone: true,
+export const account = pgTable(
+	"account",
+	{
+		id: text("id").primaryKey(),
+		accountId: text("accountId").notNull(),
+		providerId: text("providerId").notNull(),
+		userId: text("userId")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		accessToken: text("accessToken"),
+		refreshToken: text("refreshToken"),
+		idToken: text("idToken"),
+		accessTokenExpiresAt: timestamp("accessTokenExpiresAt", {
+			mode: "date",
+			withTimezone: true,
+		}),
+		refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt", {
+			mode: "date",
+			withTimezone: true,
+		}),
+		scope: text("scope"),
+		password: text("password"),
+		createdAt: timestamp("createdAt", {
+			mode: "date",
+			withTimezone: true,
+		}).notNull(),
+		updatedAt: timestamp("updatedAt", {
+			mode: "date",
+			withTimezone: true,
+		}).notNull(),
+	},
+	(table) => ({
+		userIdIdx: index("account_user_id_idx").on(table.userId),
 	}),
-	refreshTokenExpiresAt: timestamp("refreshTokenExpiresAt", {
-		mode: "date",
-		withTimezone: true,
-	}),
-	scope: text("scope"),
-	password: text("password"),
-	createdAt: timestamp("createdAt", {
-		mode: "date",
-		withTimezone: true,
-	}).notNull(),
-	updatedAt: timestamp("updatedAt", {
-		mode: "date",
-		withTimezone: true,
-	}).notNull(),
-});
+);
 
-export const session = pgTable("session", {
-	id: text("id").primaryKey(),
-	expiresAt: timestamp("expiresAt", {
-		mode: "date",
-		withTimezone: true,
-	}).notNull(),
-	token: text("token").notNull().unique(),
-	createdAt: timestamp("createdAt", {
-		mode: "date",
-		withTimezone: true,
-	}).notNull(),
-	updatedAt: timestamp("updatedAt", {
-		mode: "date",
-		withTimezone: true,
-	}).notNull(),
-	ipAddress: text("ipAddress"),
-	userAgent: text("userAgent"),
-	userId: text("userId")
-		.notNull()
-		.references(() => user.id, { onDelete: "cascade" }),
-});
+export const session = pgTable(
+	"session",
+	{
+		id: text("id").primaryKey(),
+		expiresAt: timestamp("expiresAt", {
+			mode: "date",
+			withTimezone: true,
+		}).notNull(),
+		token: text("token").notNull().unique(),
+		createdAt: timestamp("createdAt", {
+			mode: "date",
+			withTimezone: true,
+		}).notNull(),
+		updatedAt: timestamp("updatedAt", {
+			mode: "date",
+			withTimezone: true,
+		}).notNull(),
+		ipAddress: text("ipAddress"),
+		userAgent: text("userAgent"),
+		userId: text("userId")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+	},
+	(table) => ({
+		userIdIdx: index("session_user_id_idx").on(table.userId),
+	}),
+);
 
 export const verification = pgTable("verification", {
 	id: text("id").primaryKey(),
@@ -104,24 +116,30 @@ export const verification = pgTable("verification", {
 
 // ===================== PASSKEY (WebAuthn) =====================
 
-export const passkey = pgTable("passkey", {
-	id: text("id").primaryKey(),
-	name: text("name"),
-	publicKey: text("publicKey").notNull(),
-	userId: text("userId")
-		.notNull()
-		.references(() => user.id, { onDelete: "cascade" }),
-	credentialID: text("credentialID").notNull(),
-	counter: integer("counter").notNull(),
-	deviceType: text("deviceType").notNull(),
-	backedUp: boolean("backedUp").notNull(),
-	transports: text("transports"),
-	aaguid: text("aaguid"),
-	createdAt: timestamp("createdAt", {
-		mode: "date",
-		withTimezone: true,
+export const passkey = pgTable(
+	"passkey",
+	{
+		id: text("id").primaryKey(),
+		name: text("name"),
+		publicKey: text("publicKey").notNull(),
+		userId: text("userId")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		credentialID: text("credentialID").notNull(),
+		counter: integer("counter").notNull(),
+		deviceType: text("deviceType").notNull(),
+		backedUp: boolean("backedUp").notNull(),
+		transports: text("transports"),
+		aaguid: text("aaguid"),
+		createdAt: timestamp("createdAt", {
+			mode: "date",
+			withTimezone: true,
+		}),
+	},
+	(table) => ({
+		userIdIdx: index("passkey_user_id_idx").on(table.userId),
 	}),
-});
+);
 
 export const userPreferences = pgTable("preferencias_usuario", {
 	id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -136,6 +154,9 @@ export const userPreferences = pgTable("preferencias_usuario", {
 		string[] | null
 	>(),
 	attachmentMaxSizeMb: integer("attachment_max_size_mb").notNull().default(50),
+	showTransactionSummary: boolean("mostrar_resumo_lancamento")
+		.notNull()
+		.default(true),
 	dashboardWidgets: jsonb("dashboard_widgets").$type<{
 		order: string[];
 		hidden: string[];
@@ -157,39 +178,30 @@ export const userPreferences = pgTable("preferencias_usuario", {
 
 // ===================== PUBLIC TABLES =====================
 
-export const financialAccounts = pgTable(
-	"contas",
-	{
-		id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-		name: text("nome").notNull(),
-		accountType: text("tipo_conta").notNull(),
-		note: text("anotacao"),
-		status: text("status").notNull(),
-		logo: text("logo").notNull(),
-		initialBalance: numeric("saldo_inicial", { precision: 12, scale: 2 })
-			.notNull()
-			.default("0"),
-		excludeFromBalance: boolean("excluir_do_saldo").notNull().default(false),
-		excludeInitialBalanceFromIncome: boolean("excluir_saldo_inicial_receitas")
-			.notNull()
-			.default(false),
-		userId: text("user_id")
-			.notNull()
-			.references(() => user.id, { onDelete: "cascade" }),
-		createdAt: timestamp("created_at", {
-			mode: "date",
-			withTimezone: true,
-		})
-			.notNull()
-			.defaultNow(),
-	},
-	(table) => ({
-		userIdStatusIdx: index("contas_user_id_status_idx").on(
-			table.userId,
-			table.status,
-		),
-	}),
-);
+export const financialAccounts = pgTable("contas", {
+	id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+	name: text("nome").notNull(),
+	accountType: text("tipo_conta").notNull(),
+	note: text("anotacao"),
+	status: text("status").notNull(),
+	logo: text("logo").notNull(),
+	initialBalance: numeric("saldo_inicial", { precision: 12, scale: 2 })
+		.notNull()
+		.default("0"),
+	excludeFromBalance: boolean("excluir_do_saldo").notNull().default(false),
+	excludeInitialBalanceFromIncome: boolean("excluir_saldo_inicial_receitas")
+		.notNull()
+		.default(false),
+	userId: text("user_id")
+		.notNull()
+		.references(() => user.id, { onDelete: "cascade" }),
+	createdAt: timestamp("created_at", {
+		mode: "date",
+		withTimezone: true,
+	})
+		.notNull()
+		.defaultNow(),
+});
 
 export const categories = pgTable(
 	"categorias",
@@ -227,9 +239,7 @@ export const payers = pgTable(
 		note: text("anotacao"),
 		role: text("role"),
 		isAutoSend: boolean("is_auto_send").notNull().default(false),
-		shareCode: text("share_code")
-			.notNull()
-			.default(sql`substr(encode(gen_random_bytes(24), 'base64'), 1, 24)`),
+		shareCode: text("share_code").notNull(),
 		lastMailAt: timestamp("last_mail", {
 			mode: "date",
 			withTimezone: true,
@@ -247,14 +257,6 @@ export const payers = pgTable(
 	(table) => ({
 		uniqueShareCode: uniqueIndex("pagadores_share_code_key").on(
 			table.shareCode,
-		),
-		userIdStatusIdx: index("pagadores_user_id_status_idx").on(
-			table.userId,
-			table.status,
-		),
-		userIdRoleIdx: index("pagadores_user_id_role_idx").on(
-			table.userId,
-			table.role,
 		),
 	}),
 );
@@ -285,6 +287,12 @@ export const payerShares = pgTable(
 			table.payerId,
 			table.sharedWithUserId,
 		),
+		sharedWithUserIdIdx: index(
+			"compartilhamentos_pagador_shared_with_user_id_idx",
+		).on(table.sharedWithUserId),
+		createdByUserIdIdx: index(
+			"compartilhamentos_pagador_created_by_user_id_idx",
+		).on(table.createdByUserId),
 	}),
 );
 
@@ -296,7 +304,9 @@ export const cards = pgTable(
 		closingDay: text("dt_fechamento").notNull(),
 		dueDay: text("dt_vencimento").notNull(),
 		note: text("anotacao"),
-		limit: numeric("limite", { precision: 10, scale: 2 }),
+		limit: numeric("limite", { precision: 10, scale: 2 })
+			.notNull()
+			.default("0"),
 		brand: text("bandeira"),
 		logo: text("logo"),
 		status: text("status").notNull(),
@@ -317,10 +327,7 @@ export const cards = pgTable(
 			}),
 	},
 	(table) => ({
-		userIdStatusIdx: index("cartoes_user_id_status_idx").on(
-			table.userId,
-			table.status,
-		),
+		accountIdIdx: index("cartoes_conta_id_idx").on(table.accountId),
 	}),
 );
 
@@ -387,26 +394,33 @@ export const budgets = pgTable(
 		userIdCategoryIdPeriodUnique: uniqueIndex(
 			"orcamentos_user_id_categoria_id_periodo_key",
 		).on(table.userId, table.categoryId, table.period),
+		categoryIdIdx: index("orcamentos_categoria_id_idx").on(table.categoryId),
 	}),
 );
 
-export const notes = pgTable("anotacoes", {
-	id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-	title: text("titulo"),
-	description: text("descricao"),
-	type: text("tipo").notNull().default("nota"), // "nota" ou "tarefa"
-	tasks: text("tasks"), // JSON stringificado com array de tarefas
-	archived: boolean("arquivada").notNull().default(false),
-	createdAt: timestamp("created_at", {
-		mode: "date",
-		withTimezone: true,
-	})
-		.notNull()
-		.defaultNow(),
-	userId: text("user_id")
-		.notNull()
-		.references(() => user.id, { onDelete: "cascade" }),
-});
+export const notes = pgTable(
+	"anotacoes",
+	{
+		id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+		title: text("titulo"),
+		description: text("descricao"),
+		type: text("tipo").notNull().default("nota"), // "nota" ou "tarefa"
+		tasks: text("tasks"), // JSON stringificado com array de tarefas
+		archived: boolean("arquivada").notNull().default(false),
+		createdAt: timestamp("created_at", {
+			mode: "date",
+			withTimezone: true,
+		})
+			.notNull()
+			.defaultNow(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+	},
+	(table) => ({
+		userIdIdx: index("anotacoes_user_id_idx").on(table.userId),
+	}),
+);
 
 export const savedInsights = pgTable(
 	"insights_salvos",
@@ -460,7 +474,6 @@ export const apiTokens = pgTable(
 			.defaultNow(),
 	},
 	(table) => ({
-		userIdIdx: index("tokens_api_user_id_idx").on(table.userId),
 		tokenHashIdx: uniqueIndex("tokens_api_token_hash_idx").on(table.tokenHash),
 	}),
 );
@@ -485,7 +498,7 @@ export const inboxItems = pgTable(
 			withTimezone: true,
 		}).notNull(),
 
-		// Dados parseados (editáveis pelo usuário antes de processar)
+		// Dados parseados (editáveis pelo usuário antes de lançar)
 		parsedName: text("parsed_name"), // Nome do estabelecimento
 		parsedAmount: numeric("parsed_amount", { precision: 12, scale: 2 }),
 
@@ -524,6 +537,9 @@ export const inboxItems = pgTable(
 			table.userId,
 			table.createdAt,
 		),
+		transactionIdIdx: index("pre_lancamentos_lancamento_id_idx").on(
+			table.transactionId,
+		),
 	}),
 );
 
@@ -555,9 +571,6 @@ export const dashboardNotificationStates = pgTable(
 		userIdNotificationKeyUnique: uniqueIndex(
 			"dashboard_notification_states_user_id_key_unique",
 		).on(table.userId, table.notificationKey),
-		userIdArchivedAtIdx: index(
-			"dashboard_notification_states_user_id_archived_idx",
-		).on(table.userId, table.archivedAt),
 	}),
 );
 
@@ -597,10 +610,14 @@ export const installmentAnticipations = pgTable(
 			.defaultNow(),
 	},
 	(table) => ({
-		seriesIdIdx: index("antecipacoes_parcelas_series_id_idx").on(
-			table.seriesId,
-		),
 		userIdIdx: index("antecipacoes_parcelas_user_id_idx").on(table.userId),
+		transactionIdIdx: index("antecipacoes_parcelas_lancamento_id_idx").on(
+			table.transactionId,
+		),
+		payerIdIdx: index("antecipacoes_parcelas_pagador_id_idx").on(table.payerId),
+		categoryIdIdx: index("antecipacoes_parcelas_categoria_id_idx").on(
+			table.categoryId,
+		),
 	}),
 );
 
@@ -656,6 +673,7 @@ export const transactions = pgTable(
 			onUpdate: "cascade",
 		}),
 		seriesId: uuid("series_id"),
+		splitGroupId: uuid("split_group_id"),
 		transferId: uuid("transfer_id"),
 		ofxFitId: text("ofx_fit_id"),
 		importBatchId: text("import_batch_id"),
@@ -688,6 +706,11 @@ export const transactions = pgTable(
 		),
 		// Índice para buscar parcelas de uma série
 		seriesIdIdx: index("lancamentos_series_id_idx").on(table.seriesId),
+		// Índice para buscar shares de um split (userId + splitGroupId)
+		userIdSplitGroupIdIdx: index("lancamentos_user_id_split_group_id_idx").on(
+			table.userId,
+			table.splitGroupId,
+		),
 		// Índice para buscar transferências relacionadas
 		transferIdIdx: index("lancamentos_transfer_id_idx").on(table.transferId),
 		// Índice para filtrar por condição (aberto, realizado, cancelado)
@@ -699,6 +722,12 @@ export const transactions = pgTable(
 		cardIdPeriodIdx: index("lancamentos_cartao_id_period_idx").on(
 			table.cardId,
 			table.period,
+		),
+		// FK indexes: evitam seq scan em deletes/updates nas tabelas pai
+		accountIdIdx: index("lancamentos_conta_id_idx").on(table.accountId),
+		categoryIdIdx: index("lancamentos_categoria_id_idx").on(table.categoryId),
+		anticipationIdIdx: index("lancamentos_antecipacao_id_idx").on(
+			table.anticipationId,
 		),
 		// Dedup OFX: garante FITID único por usuário
 		ofxFitIdUserIdIdx: uniqueIndex("lancamentos_ofx_fit_id_user_id_idx")
@@ -721,6 +750,7 @@ export const userRelations = relations(user, ({ many, one }) => ({
 	installmentAnticipations: many(installmentAnticipations),
 	apiTokens: many(apiTokens),
 	inboxItems: many(inboxItems),
+	establishmentLogos: many(establishmentLogos),
 }));
 
 export const accountRelations = relations(account, ({ one }) => ({
@@ -904,19 +934,25 @@ export const installmentAnticipationsRelations = relations(
 
 // ===================== ATTACHMENTS =====================
 
-export const attachments = pgTable("anexos", {
-	id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-	userId: text("user_id")
-		.notNull()
-		.references(() => user.id, { onDelete: "cascade" }),
-	fileKey: text("chave_arquivo").notNull().unique(),
-	fileName: text("nome_arquivo").notNull(),
-	fileSize: integer("tamanho_bytes").notNull(),
-	mimeType: text("mime_type").notNull(),
-	createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
-		.notNull()
-		.defaultNow(),
-});
+export const attachments = pgTable(
+	"anexos",
+	{
+		id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		fileKey: text("chave_arquivo").notNull().unique(),
+		fileName: text("nome_arquivo").notNull(),
+		fileSize: integer("tamanho_bytes").notNull(),
+		mimeType: text("mime_type").notNull(),
+		createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => ({
+		userIdIdx: index("anexos_user_id_idx").on(table.userId),
+	}),
+);
 
 export const transactionAttachments = pgTable(
 	"lancamento_anexos",
@@ -952,8 +988,30 @@ export const importCategoryMappings = pgTable(
 	},
 	(table) => ({
 		pk: primaryKey({ columns: [table.userId, table.descriptionKey] }),
+		categoryIdIdx: index("import_category_mappings_category_id_idx").on(
+			table.categoryId,
+		),
 	}),
 );
+
+export const establishmentLogos = pgTable(
+	"establishment_logos",
+	{
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		nameKey: text("name_key").notNull(),
+		domain: text("domain").notNull(),
+		updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => ({
+		pk: primaryKey({ columns: [table.userId, table.nameKey] }),
+	}),
+);
+
+export type EstablishmentLogo = typeof establishmentLogos.$inferSelect;
 
 export type User = typeof user.$inferSelect;
 export type NewUser = typeof user.$inferInsert;
@@ -1004,3 +1062,13 @@ export const transactionAttachmentsRelations = relations(
 
 export type Attachment = typeof attachments.$inferSelect;
 export type TransactionAttachment = typeof transactionAttachments.$inferSelect;
+
+export const establishmentLogosRelations = relations(
+	establishmentLogos,
+	({ one }) => ({
+		user: one(user, {
+			fields: [establishmentLogos.userId],
+			references: [user.id],
+		}),
+	}),
+);

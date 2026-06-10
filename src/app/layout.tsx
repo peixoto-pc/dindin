@@ -4,12 +4,12 @@ import { QueryProvider } from "@/shared/components/providers/query-provider";
 import { ThemeProvider } from "@/shared/components/providers/theme-provider";
 import { Toaster } from "@/shared/components/ui/sonner";
 import "./globals.css";
-import { america } from "@/public/fonts/font_index";
+import { bricolage } from "@/public/fonts/font_index";
 
 export const metadata: Metadata = {
 	title: {
 		default: "OpenMonetis | Suas finanças, do seu jeito",
-		template: "%s | OpenMonetis",
+		template: "OpenMonetis | %s",
 	},
 	description:
 		"Controle suas finanças pessoais de forma simples e transparente.",
@@ -24,17 +24,21 @@ export default function RootLayout({
 		<html
 			data-scroll-behavior="smooth"
 			lang="pt-BR"
-			className={`${america.variable} ${america.className} `}
+			className={`${bricolage.className}`}
 			suppressHydrationWarning
 		>
 			<head>
 				<meta name="apple-mobile-web-app-title" content="OpenMonetis" />
-				<script
-					defer
-					src="https://umami.felipecoutinho.com/script.js"
-					data-website-id="ea438854-a014-42ea-b416-0a8321471f0f"
-					data-domains="openmonetis.com"
-				/>
+				{process.env.UMAMI_URL && process.env.UMAMI_WEBSITE_ID && (
+					<script
+						defer
+						src={`${process.env.UMAMI_URL}/script.js`}
+						data-website-id={process.env.UMAMI_WEBSITE_ID}
+						{...(process.env.UMAMI_DOMAINS
+							? { "data-domains": process.env.UMAMI_DOMAINS }
+							: {})}
+					/>
+				)}
 			</head>
 			<body className="antialiased" suppressHydrationWarning>
 				<ThemeProvider attribute="class" defaultTheme="light">

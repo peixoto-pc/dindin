@@ -176,6 +176,41 @@
 			"when": 1774891206703,
 			"tag": "0024_petite_lucky_pierre",
 			"breakpoints": true
+		},
+		{
+			"idx": 25,
+			"version": "7",
+			"when": 1776351838548,
+			"tag": "0025_burly_colonel_america",
+			"breakpoints": true
+		},
+		{
+			"idx": 26,
+			"version": "7",
+			"when": 1777042423451,
+			"tag": "0026_bored_eternity",
+			"breakpoints": true
+		},
+		{
+			"idx": 28,
+			"version": "7",
+			"when": 1777153372633,
+			"tag": "0028_fancy_reaper",
+			"breakpoints": true
+		},
+		{
+			"idx": 29,
+			"version": "7",
+			"when": 1777648189399,
+			"tag": "0029_friendly_spitfire",
+			"breakpoints": true
+		},
+		{
+			"idx": 30,
+			"version": "7",
+			"when": 1780150535055,
+			"tag": "0030_complete_umar",
+			"breakpoints": true
 		}
 	]
 }

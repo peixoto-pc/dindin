@@ -21,41 +21,40 @@ import {
 	RiCloseLine,
 	RiDragMove2Line,
 	RiEyeOffLine,
+	RiSettings4Line,
 	RiTodoLine,
 } from "@remixicon/react";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { SortableWidget } from "@/features/dashboard/components/sortable-widget";
-import { WidgetSettingsDialog } from "@/features/dashboard/components/widget-settings-dialog";
+import { SortableWidget } from "@/features/dashboard/components/widgets/sortable-widget";
+import { WidgetSettingsDialog } from "@/features/dashboard/components/widgets/widget-settings-dialog";
 import type { DashboardData } from "@/features/dashboard/fetch-dashboard-data";
 import {
 	resetWidgetPreferences,
 	updateWidgetPreferences,
 	type WidgetPreferences,
-} from "@/features/dashboard/widgets/actions";
+} from "@/features/dashboard/widget-registry/widget-actions";
 import {
+	type DashboardWidgetQuickActionOptions,
 	type WidgetConfig,
 	widgetsConfig,
-} from "@/features/dashboard/widgets/widgets-config";
+} from "@/features/dashboard/widget-registry/widget-config";
 import { NoteDialog } from "@/features/notes/components/note-dialog";
 import { TransactionDialog } from "@/features/transactions/components/dialogs/transaction-dialog/transaction-dialog";
-import type { SelectOption } from "@/features/transactions/components/types";
-import { ExpandableWidgetCard } from "@/shared/components/expandable-widget-card";
 import { Button } from "@/shared/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
+import { ExpandableWidgetCard } from "@/shared/components/widgets/expandable-widget-card";
 
 type DashboardGridEditableProps = {
 	data: DashboardData;
 	period: string;
 	initialPreferences: WidgetPreferences | null;
-	quickActionOptions: {
-		payerOptions: SelectOption[];
-		splitPayerOptions: SelectOption[];
-		defaultPayerId: string | null;
-		accountOptions: SelectOption[];
-		cardOptions: SelectOption[];
-		categoryOptions: SelectOption[];
-		estabelecimentos: string[];
-	};
+	quickActionOptions: DashboardWidgetQuickActionOptions;
 };
 
 const DEFAULT_WIDGET_ORDER = widgetsConfig.map((widget) => widget.id);
@@ -68,6 +67,9 @@ export function DashboardGridEditable({
 }: DashboardGridEditableProps) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [isPending, startTransition] = useTransition();
+	const [isMobileIncomeOpen, setIsMobileIncomeOpen] = useState(false);
+	const [isMobileExpenseOpen, setIsMobileExpenseOpen] = useState(false);
+	const [isMobileNoteOpen, setIsMobileNoteOpen] = useState(false);
 
 	// Initialize widget order and hidden state
 	const [widgetOrder, setWidgetOrder] = useState<string[]>(
@@ -140,14 +142,6 @@ export function DashboardGridEditable({
 			: [...hiddenWidgets, widgetId];
 
 		setHiddenWidgets(newHidden);
-
-		// Salvar automaticamente ao toggle
-		startTransition(async () => {
-			await updateWidgetPreferences({
-				order: widgetOrder,
-				hidden: newHidden,
-			});
-		});
 	};
 
 	const handleHideWidget = (widgetId: string) => {
@@ -190,6 +184,8 @@ export function DashboardGridEditable({
 				setWidgetOrder(DEFAULT_WIDGET_ORDER);
 				setHiddenWidgets([]);
 				setMyAccountsShowExcluded(true);
+				setOriginalOrder(DEFAULT_WIDGET_ORDER);
+				setOriginalHidden([]);
 				toast.success("Preferências restauradas!");
 			} else {
 				toast.error(result.error ?? "Erro ao restaurar");
@@ -203,7 +199,68 @@ export function DashboardGridEditable({
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				{!isEditing ? (
 					<div className="flex w-full min-w-0 flex-col gap-1 sm:w-auto sm:flex-row sm:items-center sm:gap-2">
-						<div className="-mb-1 grid w-full grid-cols-3 gap-1 pb-1 sm:mb-0 sm:flex sm:w-auto sm:items-center sm:gap-2 sm:overflow-visible sm:pb-0">
+						<div className="sm:hidden">
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button size="sm" variant="outline" className="w-full gap-2">
+										<RiAddFill className="size-4 text-primary" />
+										Adicionar
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="start" className="w-48">
+									<DropdownMenuItem
+										onSelect={() => setIsMobileIncomeOpen(true)}
+									>
+										<RiAddFill className="text-success/80" />
+										Nova receita
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										onSelect={() => setIsMobileExpenseOpen(true)}
+									>
+										<RiAddFill className="text-destructive/80" />
+										Nova despesa
+									</DropdownMenuItem>
+									<DropdownMenuItem onSelect={() => setIsMobileNoteOpen(true)}>
+										<RiTodoLine className="text-info/80" />
+										Nova anotação
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+							<TransactionDialog
+								mode="create"
+								open={isMobileIncomeOpen}
+								onOpenChange={setIsMobileIncomeOpen}
+								payerOptions={quickActionOptions.payerOptions}
+								splitPayerOptions={quickActionOptions.splitPayerOptions}
+								defaultPayerId={quickActionOptions.defaultPayerId}
+								accountOptions={quickActionOptions.accountOptions}
+								cardOptions={quickActionOptions.cardOptions}
+								categoryOptions={quickActionOptions.categoryOptions}
+								estabelecimentos={quickActionOptions.estabelecimentos}
+								defaultPeriod={period}
+								defaultTransactionType="Receita"
+							/>
+							<TransactionDialog
+								mode="create"
+								open={isMobileExpenseOpen}
+								onOpenChange={setIsMobileExpenseOpen}
+								payerOptions={quickActionOptions.payerOptions}
+								splitPayerOptions={quickActionOptions.splitPayerOptions}
+								defaultPayerId={quickActionOptions.defaultPayerId}
+								accountOptions={quickActionOptions.accountOptions}
+								cardOptions={quickActionOptions.cardOptions}
+								categoryOptions={quickActionOptions.categoryOptions}
+								estabelecimentos={quickActionOptions.estabelecimentos}
+								defaultPeriod={period}
+								defaultTransactionType="Despesa"
+							/>
+							<NoteDialog
+								mode="create"
+								open={isMobileNoteOpen}
+								onOpenChange={setIsMobileNoteOpen}
+							/>
+						</div>
+						<div className="hidden items-center gap-2 sm:flex">
 							<TransactionDialog
 								mode="create"
 								payerOptions={quickActionOptions.payerOptions}
@@ -277,6 +334,12 @@ export function DashboardGridEditable({
 				<div className="flex w-full items-center justify-end gap-2 sm:w-auto">
 					{isEditing ? (
 						<>
+							<WidgetSettingsDialog
+								hiddenWidgets={hiddenWidgets}
+								onToggleWidget={handleToggleWidget}
+								onReset={handleReset}
+								triggerLabel="Visibilidade"
+							/>
 							<Button
 								variant="outline"
 								size="sm"
@@ -298,21 +361,15 @@ export function DashboardGridEditable({
 							</Button>
 						</>
 					) : (
-						<div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
-							<WidgetSettingsDialog
-								hiddenWidgets={hiddenWidgets}
-								onToggleWidget={handleToggleWidget}
-								onReset={handleReset}
-								triggerClassName="w-full sm:w-auto"
-							/>
+						<div className="w-full sm:w-auto">
 							<Button
 								variant="outline"
 								size="sm"
 								onClick={handleStartEditing}
 								className="w-full gap-2 sm:w-auto"
 							>
-								<RiDragMove2Line className="size-4" />
-								Reordenar
+								<RiSettings4Line className="size-4" />
+								Personalizar
 							</Button>
 						</div>
 					)}
@@ -338,7 +395,7 @@ export function DashboardGridEditable({
 							>
 								<div className="relative">
 									{isEditing && (
-										<div className="absolute inset-0 z-10 bg-background/50 backdrop-blur-[1px] rounded-lg border-2 border-dashed border-primary/50 flex items-center justify-center">
+										<div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-[1.5px] rounded-lg border border-dashed border-primary flex items-center justify-center">
 											<div className="flex flex-col items-center gap-2">
 												<RiDragMove2Line className="size-8 text-primary" />
 												<span className="text-xs font-medium">
@@ -368,11 +425,16 @@ export function DashboardGridEditable({
 										{widget.component({
 											data,
 											period,
+											adminPayerSlug:
+												quickActionOptions.payerOptions.find(
+													(p) => p.value === quickActionOptions.defaultPayerId,
+												)?.slug ?? null,
 											widgetPreferences: {
 												order: widgetOrder,
 												hidden: hiddenWidgets,
 												myAccountsShowExcluded,
 											},
+											quickActionOptions,
 											onMyAccountsShowExcludedChange: setMyAccountsShowExcluded,
 										})}
 									</ExpandableWidgetCard>

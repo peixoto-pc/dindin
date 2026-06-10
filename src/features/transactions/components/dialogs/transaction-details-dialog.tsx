@@ -1,13 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import {
+	type ComponentType,
+	type CSSProperties,
+	useEffect,
+	useState,
+} from "react";
 import {
 	currencyFormatter,
 	formatCondition,
-	formatDate,
 	formatPeriod,
-} from "@/features/transactions/formatting-helpers";
+} from "@/features/transactions/lib/formatting-helpers";
+import { EstablishmentLogo } from "@/shared/components/entity-avatar";
 import { TransactionTypeBadge } from "@/shared/components/transaction-type-badge";
+import {
+	Avatar,
+	AvatarFallback,
+	AvatarImage,
+} from "@/shared/components/ui/avatar";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -20,8 +31,11 @@ import {
 	DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Separator } from "@/shared/components/ui/separator";
-import { parseLocalDateString } from "@/shared/utils/date";
-import { getPaymentMethodIcon } from "@/shared/utils/icons";
+import { resolveLogoSrc } from "@/shared/lib/logo";
+import { getAvatarSrc } from "@/shared/lib/payers/utils";
+import { getCategoryColorFromName } from "@/shared/utils/category-colors";
+import { formatDate, parseLocalDateString } from "@/shared/utils/date";
+import { getIconComponent, getPaymentMethodIcon } from "@/shared/utils/icons";
 import { AttachmentSection } from "../attachments/attachment-section";
 import { InstallmentTimeline } from "../shared/installment-timeline";
 import type { TransactionItem } from "../types";
@@ -41,10 +55,9 @@ export function TransactionDetailsDialog({
 }: TransactionDetailsDialogProps) {
 	const [attachmentCount, setAttachmentCount] = useState<number | null>(null);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: transaction?.id é trigger intencional para reset do contador
 	useEffect(() => {
 		setAttachmentCount(null);
-	}, [transaction?.id]);
+	}, []);
 
 	if (!transaction) return null;
 
@@ -73,34 +86,39 @@ export function TransactionDetailsDialog({
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="min-w-0 overflow-x-hidden sm:max-w-xl">
-				<DialogHeader>
-					<DialogTitle>{transaction.name}</DialogTitle>
-					<DialogDescription>
-						{formatDate(transaction.purchaseDate)}
-					</DialogDescription>
+				<DialogHeader className="text-left">
+					<div className="flex min-w-0 items-start gap-2">
+						<EstablishmentLogo size={40} name={transaction.name} />
+						<div className="min-w-0">
+							<DialogTitle className="truncate">{transaction.name}</DialogTitle>
+							<DialogDescription className="mt-1">
+								{formatDate(transaction.purchaseDate)}
+							</DialogDescription>
+						</div>
+					</div>
 				</DialogHeader>
 
 				<div className="min-w-0 max-h-[60vh] overflow-x-hidden overflow-y-auto text-sm">
 					<div className="min-w-0 space-y-4">
-						<section className="rounded-lg border bg-muted/20 p-3">
+						<section className="rounded-lg border p-3">
 							<div className="flex items-start justify-between gap-3">
 								<div className="min-w-0">
 									<p className="text-xs uppercase tracking-wide text-muted-foreground">
-										Resumo
+										Total
 									</p>
-									<p className="mt-1 text-2xl font-medium">
+									<p className="mt-1 text-2xl font-semibold">
 										{currencyFormatter.format(valorTotal)}
 									</p>
 								</div>
 								<Badge
-									variant="secondary"
+									variant={transaction.isSettled ? "secondary" : "info"}
 									className={
 										transaction.isSettled
 											? "text-success bg-success/10"
-											: "text-muted-foreground"
+											: undefined
 									}
 								>
-									{transaction.isSettled ? "Pago" : "Pendente"}
+									{transaction.isSettled ? "Pago" : "Em aberto"}
 								</Badge>
 							</div>
 							<div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -116,10 +134,16 @@ export function TransactionDetailsDialog({
 						</section>
 
 						<section className="space-y-2">
-							<h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+							<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 								Detalhes
 							</h3>
 							<ul className="min-w-0 grid gap-2 rounded-lg border p-3">
+								<DetailRow
+									label="ID"
+									value={transaction.id}
+									valueClassName="font-mono"
+								/>
+
 								<DetailRow
 									label="Período"
 									value={formatPeriod(transaction.period)}
@@ -135,19 +159,94 @@ export function TransactionDetailsDialog({
 									</span>
 								</li>
 
-								<DetailRow
-									label={transaction.cartaoName ? "Cartão" : "Conta"}
-									value={transaction.cartaoName ?? transaction.contaName ?? "—"}
-								/>
+								<li className="min-w-0 flex items-center justify-between gap-3">
+									<span className="text-muted-foreground">
+										{transaction.cartaoName ? "Cartão" : "Conta"}
+									</span>
+									{(() => {
+										const accountLabel =
+											transaction.cartaoName ?? transaction.contaName;
+										if (!accountLabel) {
+											return <span className="min-w-0 truncate">—</span>;
+										}
+										const logoSrc = resolveLogoSrc(
+											transaction.cartaoLogo ?? transaction.contaLogo,
+										);
+										return (
+											<span className="inline-flex min-w-0 items-center gap-2">
+												{logoSrc && (
+													<Image
+														src={logoSrc}
+														alt={`Logo de ${accountLabel}`}
+														width={20}
+														height={20}
+														className="shrink-0 rounded-full"
+													/>
+												)}
+												<span className="min-w-0 truncate">{accountLabel}</span>
+											</span>
+										);
+									})()}
+								</li>
 
-								<DetailRow
-									label="Categoria"
-									value={transaction.categoriaName ?? "—"}
-								/>
+								<li className="min-w-0 flex items-center justify-between gap-3">
+									<span className="text-muted-foreground">Categoria</span>
+									{(() => {
+										if (!transaction.categoriaName) {
+											return <span className="min-w-0 truncate">—</span>;
+										}
+										const IconComponent = transaction.categoriaIcon
+											? (getIconComponent(
+													transaction.categoriaIcon,
+												) as ComponentType<{
+													className?: string;
+													style?: CSSProperties;
+												}> | null)
+											: null;
+										const color = getCategoryColorFromName(
+											transaction.categoriaName,
+										);
+										return (
+											<span className="inline-flex min-w-0 items-center gap-1.5">
+												{IconComponent ? (
+													<IconComponent
+														className="size-3.5 shrink-0"
+														style={{ color }}
+													/>
+												) : null}
+												<span className="min-w-0 truncate">
+													{transaction.categoriaName}
+												</span>
+											</span>
+										);
+									})()}
+								</li>
 
-								<li className="flex items-center justify-between">
+								<li className="min-w-0 flex items-center justify-between gap-3">
 									<span className="text-muted-foreground">Responsável</span>
-									<span>{transaction.pagadorName}</span>
+									{(() => {
+										const label = transaction.pagadorName?.trim() || "—";
+										if (label === "—") {
+											return <span className="min-w-0 truncate">—</span>;
+										}
+										const displayName = label.split(/\s+/)[0] ?? label;
+										const avatarSrc = getAvatarSrc(transaction.pagadorAvatar);
+										const initial = displayName.charAt(0).toUpperCase() || "?";
+										return (
+											<span className="inline-flex min-w-0 items-center gap-2">
+												<Avatar className="size-5">
+													<AvatarImage
+														src={avatarSrc}
+														alt={`Avatar de ${label}`}
+													/>
+													<AvatarFallback className="text-[10px] font-medium uppercase">
+														{initial}
+													</AvatarFallback>
+												</Avatar>
+												<span className="min-w-0 truncate">{label}</span>
+											</span>
+										);
+									})()}
 								</li>
 
 								{isBoleto && transaction.dueDate && (
@@ -167,7 +266,7 @@ export function TransactionDetailsDialog({
 						</section>
 
 						<section className="space-y-2">
-							<h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+							<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 								Valores
 							</h3>
 							<ul className="min-w-0 grid gap-2 rounded-lg border p-3">
@@ -207,7 +306,7 @@ export function TransactionDetailsDialog({
 
 						{transaction.note ? (
 							<section className="space-y-2">
-								<h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+								<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 									Notas
 								</h3>
 								<div className="rounded-lg border p-3 text-foreground">
@@ -218,7 +317,7 @@ export function TransactionDetailsDialog({
 
 						{attachmentCount !== 0 && (
 							<section className="space-y-2">
-								<h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+								<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 									Anexos
 								</h3>
 								<div className="min-w-0">
@@ -242,7 +341,7 @@ export function TransactionDetailsDialog({
 						</Button>
 					</DialogClose>
 					{onEdit && !transaction.readonly && (
-						<Button onClick={handleEdit}>Editar</Button>
+						<Button onClick={handleEdit}>Alterar</Button>
 					)}
 				</DialogFooter>
 			</DialogContent>
@@ -253,13 +352,16 @@ export function TransactionDetailsDialog({
 interface DetailRowProps {
 	label: string;
 	value: string;
+	valueClassName?: string;
 }
 
-function DetailRow({ label, value }: DetailRowProps) {
+function DetailRow({ label, value, valueClassName }: DetailRowProps) {
 	return (
 		<li className="min-w-0 flex items-center justify-between gap-3">
 			<span className="text-muted-foreground">{label}</span>
-			<span className="min-w-0 truncate">{value}</span>
+			<span className={`min-w-0 truncate ${valueClassName ?? ""}`}>
+				{value}
+			</span>
 		</li>
 	);
 }

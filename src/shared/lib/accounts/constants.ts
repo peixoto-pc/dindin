@@ -2,7 +2,7 @@ import {
 	PAYMENT_METHODS,
 	TRANSACTION_CONDITIONS,
 	TRANSACTION_TYPES,
-} from "@/features/transactions/constants";
+} from "@/features/transactions/lib/constants";
 
 export const INITIAL_BALANCE_CATEGORY_NAME = "Saldo inicial";
 export const INITIAL_BALANCE_NOTE = "saldo inicial";
@@ -19,3 +19,18 @@ export const ACCOUNT_AUTO_INVOICE_NOTE_PREFIX = "AUTO_FATURA:";
 
 export const buildInvoicePaymentNote = (cardId: string, period: string) =>
 	`${ACCOUNT_AUTO_INVOICE_NOTE_PREFIX}${cardId}:${period}`;
+
+export const INVOICE_ADJUSTMENT_NAME = "Ajuste de fatura";
+
+export const ACCOUNT_BALANCE_ADJUSTMENT_NAME = "Ajuste de saldo";
+
+export const REFUND_NOTE_PREFIX = "AUTO_REEMBOLSO:";
+
+export const buildRefundNote = (originalTransactionId: string) =>
+	`${REFUND_NOTE_PREFIX}${originalTransactionId}`;
+
+export const isRefundNote = (note: string | null | undefined) =>
+	note?.startsWith(REFUND_NOTE_PREFIX) ?? false;
+
+export const isAccountInactive = (status: string | null | undefined) =>
+	status?.toLowerCase() === "inativa";

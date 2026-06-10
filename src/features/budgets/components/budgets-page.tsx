@@ -8,7 +8,7 @@ import {
 	duplicatePreviousMonthBudgetsAction,
 } from "@/features/budgets/actions";
 import { ConfirmActionDialog } from "@/shared/components/confirm-action-dialog";
-import { EmptyState } from "@/shared/components/empty-state";
+import { EmptyState } from "@/shared/components/feedback/empty-state";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { BudgetCard } from "./budget-card";
@@ -19,14 +19,12 @@ interface BudgetsPageProps {
 	budgets: Budget[];
 	categories: BudgetCategory[];
 	selectedPeriod: string;
-	periodLabel: string;
 }
 
 export function BudgetsPage({
 	budgets,
 	categories,
 	selectedPeriod,
-	periodLabel,
 }: BudgetsPageProps) {
 	const [editOpen, setEditOpen] = useState(false);
 	const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null);
@@ -137,7 +135,6 @@ export function BudgetsPage({
 							<BudgetCard
 								key={budget.id}
 								budget={budget}
-								periodLabel={periodLabel}
 								onEdit={handleEdit}
 								onRemove={handleRemoveRequest}
 							/>
@@ -168,7 +165,7 @@ export function BudgetsPage({
 				onOpenChange={handleRemoveOpenChange}
 				title={removeTitle}
 				description="Esta ação remove o limite configurado para a categoria selecionada."
-				confirmLabel="Remover orçamento"
+				confirmLabel="Remover"
 				pendingLabel="Removendo..."
 				confirmVariant="destructive"
 				onConfirm={handleRemoveConfirm}
@@ -179,7 +176,7 @@ export function BudgetsPage({
 				onOpenChange={setDuplicateOpen}
 				title="Copiar orçamentos do último mês?"
 				description="Isso copiará os limites definidos no mês anterior para as categorias que ainda não possuem orçamento neste mês."
-				confirmLabel="Copiar orçamentos"
+				confirmLabel="Copiar"
 				pendingLabel="Copiando..."
 				onConfirm={handleDuplicateConfirm}
 			/>

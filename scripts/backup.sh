@@ -58,21 +58,26 @@ DATA_FILE="$BACKUP_DIR/openmonetis_${TIMESTAMP}.data.sql.gz"
 
 log "Iniciando backup (modo: $DB_MODE)..."
 
+# Schemas relevantes do OpenMonetis (descarta lixo Supabase: auth, realtime, storage, vault, graphql, etc.)
+SCHEMA_FLAGS=(--schema=public --schema=drizzle)
+
 # --- Dump ---
 if [[ "$DB_MODE" == "remote" ]]; then
   # --no-owner --no-privileges: necessário no Supabase (roles gerenciados internamente)
   pg_dump --format=custom --no-owner --no-privileges \
+    "${SCHEMA_FLAGS[@]}" \
     "$REMOTE_DB_URL" > "$DUMP_FILE"
 
   pg_dump --no-owner --no-privileges \
+    "${SCHEMA_FLAGS[@]}" \
     "$REMOTE_DB_URL" | gzip > "$SQL_FILE"
 
 elif [[ "$DB_MODE" == "docker" ]]; then
   docker exec "$DOCKER_CONTAINER" pg_dump \
-    -U "$DOCKER_DB_USER" -Fc "$DOCKER_DB_NAME" > "$DUMP_FILE"
+    -U "$DOCKER_DB_USER" -Fc "${SCHEMA_FLAGS[@]}" "$DOCKER_DB_NAME" > "$DUMP_FILE"
 
   docker exec "$DOCKER_CONTAINER" pg_dump \
-    -U "$DOCKER_DB_USER" "$DOCKER_DB_NAME" | gzip > "$SQL_FILE"
+    -U "$DOCKER_DB_USER" "${SCHEMA_FLAGS[@]}" "$DOCKER_DB_NAME" | gzip > "$SQL_FILE"
 
 else
   log "ERRO: DB_MODE inválido ('$DB_MODE'). Use 'remote' ou 'docker'."

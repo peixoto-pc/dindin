@@ -9,8 +9,8 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { exportTransactionsDataAction } from "@/features/transactions/actions";
-import type { TransactionsExportContext } from "@/features/transactions/export-types";
-import { formatCurrency } from "@/features/transactions/formatting-helpers";
+import type { TransactionsExportContext } from "@/features/transactions/lib/export-types";
+import { formatCurrency } from "@/features/transactions/lib/formatting-helpers";
 import { Button } from "@/shared/components/ui/button";
 import {
 	DropdownMenu,
@@ -26,7 +26,7 @@ import {
 import { displayPeriod } from "@/shared/utils/period";
 import type { TransactionItem } from "./types";
 
-interface LancamentosExportProps {
+interface TransactionsExportProps {
 	lancamentos: TransactionItem[];
 	period: string;
 	exportContext?: TransactionsExportContext;
@@ -43,15 +43,34 @@ const loadPdfDeps = async () => {
 	return { jsPDF, autoTable };
 };
 
+const formatPeriodDate = (dateString: string) =>
+	formatDateOnly(dateString, {
+		day: "2-digit",
+		month: "2-digit",
+		year: "numeric",
+	}) ?? dateString;
+
 export function TransactionsExport({
 	lancamentos,
 	period,
 	exportContext,
-}: LancamentosExportProps) {
+}: TransactionsExportProps) {
 	const [isExporting, setIsExporting] = useState(false);
+	const dateStartFilter = exportContext?.filters.dateStartFilter ?? null;
+	const dateEndFilter = exportContext?.filters.dateEndFilter ?? null;
+	const periodLabel =
+		dateStartFilter || dateEndFilter
+			? `${dateStartFilter ? formatPeriodDate(dateStartFilter) : "Início"} até ${
+					dateEndFilter ? formatPeriodDate(dateEndFilter) : "hoje"
+				}`
+			: displayPeriod(period);
+	const filePeriodSlug =
+		dateStartFilter || dateEndFilter
+			? `${dateStartFilter ?? "inicio"}-${dateEndFilter ?? "hoje"}`
+			: period;
 
 	const getFileName = (extension: string) => {
-		return `lancamentos-${period}.${extension}`;
+		return `lancamentos-${filePeriodSlug}.${extension}`;
 	};
 
 	const formatDate = (dateString: string) => {
@@ -109,7 +128,7 @@ export function TransactionsExport({
 				"Valor",
 				"Category",
 				"Conta/Cartão",
-				"Payer",
+				"Pessoa",
 			];
 			const rows: string[][] = [];
 
@@ -169,7 +188,7 @@ export function TransactionsExport({
 				"Valor",
 				"Category",
 				"Conta/Cartão",
-				"Payer",
+				"Pessoa",
 			];
 			const rows: (string | number)[][] = [];
 
@@ -229,8 +248,8 @@ export function TransactionsExport({
 			const doc = new jsPDF({ orientation: "landscape" });
 			const primaryColor = getPrimaryPdfColor();
 			const [smallLogoDataUrl, textLogoDataUrl] = await Promise.all([
-				loadExportLogoDataUrl("/images/logo_small.png"),
-				loadExportLogoDataUrl("/images/logo_text.png"),
+				loadExportLogoDataUrl("/images/logo_small.svg"),
+				loadExportLogoDataUrl("/images/logo_text.svg"),
 			]);
 			let brandingEndX = 14;
 
@@ -251,7 +270,7 @@ export function TransactionsExport({
 			doc.text("Lançamentos", titleX, 15);
 
 			doc.setFontSize(10);
-			doc.text(`Período: ${displayPeriod(period)}`, titleX, 22);
+			doc.text(`Período: ${periodLabel}`, titleX, 22);
 			doc.text(
 				`Gerado em: ${
 					formatDateTime(new Date(), {
@@ -277,7 +296,7 @@ export function TransactionsExport({
 					"Valor",
 					"Categoria",
 					"Conta/Cartão",
-					"Payer",
+					"Pessoa",
 				],
 			];
 
@@ -317,7 +336,7 @@ export function TransactionsExport({
 					5: { cellWidth: 24 }, // Valor
 					6: { cellWidth: 30 }, // Categoria
 					7: { cellWidth: 30 }, // Conta/Cartão
-					8: { cellWidth: 31 }, // Payer
+					8: { cellWidth: 31 }, // Pessoa
 				},
 				didParseCell: (cellData) => {
 					if (cellData.section === "body" && cellData.column.index === 5) {

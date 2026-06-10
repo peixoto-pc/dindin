@@ -8,9 +8,12 @@ const nextConfig: NextConfig = {
 	output: "standalone",
 	cacheComponents: true,
 	reactCompiler: true,
-
 	images: {
-		remotePatterns: [new URL("https://lh3.googleusercontent.com/**")],
+		remotePatterns: [
+			new URL("https://lh3.googleusercontent.com/**"),
+			{ protocol: "https", hostname: "**" },
+			{ protocol: "http", hostname: "**" },
+		],
 	},
 	devIndicators: {
 		position: "bottom-right",
@@ -18,6 +21,7 @@ const nextConfig: NextConfig = {
 	experimental: {
 		prefetchInlining: true,
 		turbopackFileSystemCacheForDev: true,
+		optimizePackageImports: ["@remixicon/react"],
 	},
 
 	// Headers for Safari compatibility

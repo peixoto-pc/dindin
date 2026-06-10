@@ -1,4 +1,4 @@
-import type { TransactionFormState } from "@/features/transactions/form-helpers";
+import type { TransactionFormState } from "@/features/transactions/lib/form-helpers";
 import type { SelectOption, TransactionItem } from "../../types";
 
 export type FormState = TransactionFormState;
@@ -17,6 +17,7 @@ export interface TransactionDialogProps {
 	estabelecimentos: string[];
 	transaction?: TransactionItem;
 	defaultPeriod?: string;
+	defaultAccountId?: string | null;
 	defaultCardId?: string | null;
 	defaultPaymentMethod?: string | null;
 	defaultPurchaseDate?: string | null;
@@ -49,9 +50,29 @@ export interface TransactionDialogProps {
 		pendingDetachIds: string[];
 		pendingUploadFiles: File[];
 	}) => void;
+	onSplitEditRequest?: (data: {
+		id: string;
+		purchaseDate: string;
+		period: string;
+		name: string;
+		transactionType: string;
+		amount: number;
+		condition: string;
+		paymentMethod: string;
+		categoryId: string | undefined;
+		note: string;
+		payerId: string | undefined;
+		accountId: string | undefined;
+		cardId: string | undefined;
+		isSettled: boolean | null;
+		dueDate: string | null;
+		boletoPaymentDate: string | null;
+		pendingDetachIds: string[];
+		pendingUploadFiles: File[];
+	}) => void;
 }
 
-export interface BaseFieldSectionProps {
+interface BaseFieldSectionProps {
 	formState: FormState;
 	onFieldChange: <Key extends keyof FormState>(
 		key: Key,
@@ -75,7 +96,7 @@ export interface CategorySectionProps extends BaseFieldSectionProps {
 
 export interface PayerSectionProps extends BaseFieldSectionProps {
 	payerOptions: SelectOption[];
-	secondaryPayerOptions: SelectOption[];
+	splitPayerOptions: SelectOption[];
 	totalAmount: number;
 }
 

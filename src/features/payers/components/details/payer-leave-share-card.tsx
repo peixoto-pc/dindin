@@ -14,7 +14,7 @@ import {
 } from "@/shared/components/ui/card";
 import { formatDateTime } from "@/shared/utils/date";
 
-interface PagadorLeaveShareCardProps {
+interface PayerLeaveShareCardProps {
 	shareId: string;
 	pagadorName: string;
 	createdAt: string;
@@ -24,7 +24,7 @@ export function PayerLeaveShareCard({
 	shareId,
 	pagadorName,
 	createdAt,
-}: PagadorLeaveShareCardProps) {
+}: PayerLeaveShareCardProps) {
 	const router = useRouter();
 	const [isPending, startTransition] = useTransition();
 	const [showConfirm, setShowConfirm] = useState(false);
@@ -53,7 +53,7 @@ export function PayerLeaveShareCard({
 	return (
 		<Card className="border">
 			<CardHeader>
-				<CardTitle className="text-base font-medium">
+				<CardTitle className="text-base font-semibold">
 					Acesso Compartilhado
 				</CardTitle>
 				<p className="text-sm text-muted-foreground">

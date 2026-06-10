@@ -4,11 +4,14 @@ import {
 	fetchTransactionsPageWithRelations,
 	fetchTransactionsWithRelations,
 } from "@/features/transactions/queries";
-import { INITIAL_BALANCE_NOTE } from "@/shared/lib/accounts/constants";
+import {
+	INITIAL_BALANCE_NOTE,
+	REFUND_NOTE_PREFIX,
+} from "@/shared/lib/accounts/constants";
 import { db } from "@/shared/lib/db";
 import { getAdminPayerId } from "@/shared/lib/payers/get-admin-id";
 
-export type AccountSummaryData = {
+type AccountSummaryData = {
 	openingBalance: number;
 	currentBalance: number;
 	totalIncomes: number;
@@ -74,7 +77,9 @@ export async function fetchAccountSummary(
           sum(
             case
               when ${transactions.note} = ${INITIAL_BALANCE_NOTE} then 0
+              when ${transactions.note} ilike ${`${REFUND_NOTE_PREFIX}%`} then 0
               when ${transactions.transactionType} = 'Receita' then ${transactions.amount}
+              when ${transactions.transactionType} = 'Transferência' and ${transactions.amount} > 0 then ${transactions.amount}
               else 0
             end
           ),
@@ -86,7 +91,9 @@ export async function fetchAccountSummary(
           sum(
             case
               when ${transactions.note} = ${INITIAL_BALANCE_NOTE} then 0
+              when ${transactions.note} ilike ${`${REFUND_NOTE_PREFIX}%`} then abs(${transactions.amount})
               when ${transactions.transactionType} = 'Despesa' then ${transactions.amount}
+              when ${transactions.transactionType} = 'Transferência' and ${transactions.amount} < 0 then ${transactions.amount}
               else 0
             end
           ),
@@ -135,7 +142,8 @@ export async function fetchAccountSummary(
 	const openingBalance = initialBalance + previousMovements;
 	const netAmount = Number(periodSummary?.netAmount ?? 0);
 	const totalIncomes = Number(periodSummary?.incomes ?? 0);
-	const totalExpenses = Math.abs(Number(periodSummary?.expenses ?? 0));
+	const expenseNet = Number(periodSummary?.expenses ?? 0);
+	const totalExpenses = Math.max(0, -expenseNet);
 	const currentBalance = openingBalance + netAmount;
 
 	return {
@@ -146,7 +154,7 @@ export async function fetchAccountSummary(
 	};
 }
 
-export async function fetchAccountLancamentos(
+export async function fetchAccountTransactions(
 	filters: SQL[],
 	settledOnly = true,
 ) {
@@ -159,7 +167,7 @@ export async function fetchAccountLancamentos(
 	});
 }
 
-export async function fetchAccountLancamentosPage(
+export async function fetchAccountTransactionsPage(
 	filters: SQL[],
 	{
 		page,

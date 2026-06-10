@@ -3,6 +3,7 @@ import { NotificationBell } from "@/shared/components/navigation/navbar/notifica
 import { RefreshPageButton } from "@/shared/components/refresh-page-button";
 import type { DashboardNotificationsSnapshot } from "@/shared/lib/types/notifications";
 import { checkForUpdate } from "@/shared/lib/version/check-update";
+import type { NavbarFinanceLinks } from "./nav-items";
 import { NavMenu } from "./nav-menu";
 import { NavbarShell } from "./navbar-shell";
 import { NavbarUser } from "./navbar-user";
@@ -14,36 +15,38 @@ type AppNavbarProps = {
 		email: string;
 		image: string | null;
 	};
-	pagadorAvatarUrl: string | null;
-	preLancamentosCount?: number;
+	payerAvatarUrl: string | null;
+	inboxPendingCount?: number;
 	notificationsSnapshot: DashboardNotificationsSnapshot;
+	financeLinks: NavbarFinanceLinks;
 };
 
 export async function AppNavbar({
 	user,
-	pagadorAvatarUrl,
-	preLancamentosCount = 0,
+	payerAvatarUrl,
+	inboxPendingCount = 0,
 	notificationsSnapshot,
+	financeLinks,
 }: AppNavbarProps) {
 	const updateCheck = await checkForUpdate();
 
 	return (
 		<NavbarShell logoHref="/dashboard" fixed>
-			<NavMenu />
+			<NavMenu financeLinks={financeLinks} />
 			<div className="ml-auto flex items-center gap-2">
 				<NotificationBell
 					notifications={notificationsSnapshot.notifications}
 					unreadCount={notificationsSnapshot.unreadCount}
 					visibleCount={notificationsSnapshot.visibleCount}
 					budgetNotifications={notificationsSnapshot.budgetNotifications}
-					preLancamentosCount={preLancamentosCount}
+					inboxPendingCount={inboxPendingCount}
 				/>
 				<RefreshPageButton variant="navbar" />
 				<AnimatedThemeToggler variant="navbar" />
 			</div>
 			<NavbarUser
 				user={user}
-				pagadorAvatarUrl={pagadorAvatarUrl}
+				payerAvatarUrl={payerAvatarUrl}
 				updateCheck={updateCheck}
 			/>
 		</NavbarShell>

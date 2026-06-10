@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { deleteCardAction } from "@/features/cards/actions";
 import { ConfirmActionDialog } from "@/shared/components/confirm-action-dialog";
-import { EmptyState } from "@/shared/components/empty-state";
+import { EmptyState } from "@/shared/components/feedback/empty-state";
 import { Button } from "@/shared/components/ui/button";
 import { Card as UiCard } from "@/shared/components/ui/card";
 import {
@@ -130,7 +130,7 @@ export function CardsPage({
 		}
 
 		return (
-			<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+			<div className="grid gap-4 grid-cols-1 sm:grid-cols-1 xl:grid-cols-3">
 				{list.map((card) => (
 					<CardItem
 						key={card.id}
@@ -142,6 +142,9 @@ export function CardsPage({
 						limit={card.limit}
 						limitInUse={card.limitInUse ?? null}
 						limitAvailable={card.limitAvailable ?? card.limit ?? null}
+						currentInvoiceAmount={card.currentInvoiceAmount}
+						currentInvoiceLabel={card.currentInvoiceLabel}
+						currentInvoiceStatus={card.currentInvoiceStatus}
 						accountName={card.accountName}
 						logo={card.logo}
 						note={card.note}
@@ -174,14 +177,14 @@ export function CardsPage({
 				<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 					<TabsList>
 						<TabsTrigger value="ativos">Ativos</TabsTrigger>
-						<TabsTrigger value="arquivados">Arquivados</TabsTrigger>
+						<TabsTrigger value="inativos">Inativos</TabsTrigger>
 					</TabsList>
 
 					<TabsContent value="ativos" className="mt-4">
 						{renderCardList(orderedCards, false)}
 					</TabsContent>
 
-					<TabsContent value="arquivados" className="mt-4">
+					<TabsContent value="inativos" className="mt-4">
 						{renderCardList(orderedArchivedCards, true)}
 					</TabsContent>
 				</Tabs>
@@ -201,7 +204,7 @@ export function CardsPage({
 				onOpenChange={handleRemoveOpenChange}
 				title={removeTitle}
 				description="Ao remover este cartão, os registros relacionados a ele serão excluídos permanentemente."
-				confirmLabel="Remover cartão"
+				confirmLabel="Remover"
 				pendingLabel="Removendo..."
 				confirmVariant="destructive"
 				onConfirm={handleRemoveConfirm}

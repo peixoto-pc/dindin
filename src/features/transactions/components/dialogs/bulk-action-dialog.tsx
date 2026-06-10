@@ -70,6 +70,23 @@ export function BulkActionDialog({
 		return "Este e os próximos lançamentos";
 	};
 
+	const getPeriodLabel = () => {
+		if (seriesType === "installment" && currentNumber && totalCount) {
+			return `Todas as pessoas desta parcela (${currentNumber}/${totalCount})`;
+		}
+		if (seriesType === "installment") {
+			return "Todas as pessoas desta parcela";
+		}
+		return "Todas as pessoas deste lançamento";
+	};
+
+	const getPeriodDescription = () => {
+		if (seriesType === "installment") {
+			return "Aplica a alteração para todas as pessoas que dividem esta parcela";
+		}
+		return "Aplica a alteração para todas as pessoas que dividem este lançamento";
+	};
+
 	const getAllLabel = () => {
 		if (seriesType === "installment" && totalCount) {
 			return `Todas as parcelas (${totalCount} ${
@@ -116,16 +133,16 @@ export function BulkActionDialog({
 									htmlFor="period"
 									className="text-sm cursor-pointer font-medium"
 								>
-									Todos os pagadores deste período
+									{getPeriodLabel()}
 								</Label>
 								<p className="text-xs text-muted-foreground">
-									Aplica a todos os lançamentos deste mesmo mês na série
+									{getPeriodDescription()}
 								</p>
 								{scope === "period" && actionType === "edit" && (
 									<div className="mt-1.5 flex items-start gap-1.5 rounded-md bg-amber-50 px-2 py-1.5 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
 										<RiErrorWarningLine className="mt-0.5 size-3.5 shrink-0" />
 										<p className="text-xs">
-											Atenção: os valores individuais de cada pagador serão
+											Atenção: os valores individuais de cada pessoa serão
 											substituídos pelos valores deste lançamento.
 										</p>
 									</div>

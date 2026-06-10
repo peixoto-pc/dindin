@@ -24,11 +24,11 @@ import { updatePreferencesAction } from "@/features/settings/actions";
 import {
 	ATTACHMENT_SIZE_OPTIONS,
 	type AttachmentSizeOption,
-} from "@/features/transactions/attachments-config";
+} from "@/features/transactions/lib/attachments-config";
 import {
-	DEFAULT_LANCAMENTOS_COLUMN_ORDER,
-	LANCAMENTOS_COLUMN_LABELS,
-} from "@/features/transactions/column-order";
+	DEFAULT_TRANSACTIONS_COLUMN_ORDER,
+	TRANSACTIONS_COLUMN_LABELS,
+} from "@/features/transactions/lib/column-order";
 import { Button } from "@/shared/components/ui/button";
 import { Label } from "@/shared/components/ui/label";
 import { Separator } from "@/shared/components/ui/separator";
@@ -42,6 +42,7 @@ interface PreferencesFormProps {
 	statementNoteAsColumn: boolean;
 	transactionsColumnOrder: string[] | null;
 	attachmentMaxSizeMb: number;
+	showTransactionSummary: boolean;
 }
 
 function SortableColumnItem({ id }: { id: string }) {
@@ -59,7 +60,7 @@ function SortableColumnItem({ id }: { id: string }) {
 		transition,
 	};
 
-	const label = LANCAMENTOS_COLUMN_LABELS[id] ?? id;
+	const label = TRANSACTIONS_COLUMN_LABELS[id] ?? id;
 
 	return (
 		<div
@@ -85,6 +86,7 @@ export function PreferencesForm({
 	statementNoteAsColumn: initialExtratoNoteAsColumn,
 	transactionsColumnOrder: initialColumnOrder,
 	attachmentMaxSizeMb: initialAttachmentMaxSizeMb,
+	showTransactionSummary: initialShowTransactionSummary,
 }: PreferencesFormProps) {
 	const router = useRouter();
 	const [isPending, startTransition] = useTransition();
@@ -94,7 +96,7 @@ export function PreferencesForm({
 	const [columnOrder, setColumnOrder] = useState<string[]>(
 		initialColumnOrder && initialColumnOrder.length > 0
 			? initialColumnOrder
-			: DEFAULT_LANCAMENTOS_COLUMN_ORDER,
+			: DEFAULT_TRANSACTIONS_COLUMN_ORDER,
 	);
 	const [attachmentMaxSizeMb, setAttachmentMaxSizeMb] =
 		useState<AttachmentSizeOption>(
@@ -104,6 +106,9 @@ export function PreferencesForm({
 				? initialAttachmentMaxSizeMb
 				: 50) as AttachmentSizeOption,
 		);
+	const [showTransactionSummary, setShowTransactionSummary] = useState(
+		initialShowTransactionSummary,
+	);
 
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -129,6 +134,7 @@ export function PreferencesForm({
 				statementNoteAsColumn,
 				transactionsColumnOrder: columnOrder,
 				attachmentMaxSizeMb,
+				showTransactionSummary,
 			});
 
 			if (result.success) {
@@ -145,7 +151,7 @@ export function PreferencesForm({
 			{/* Seção: Lançamentos */}
 			<section className="space-y-4">
 				<div>
-					<h3 className="text-base font-medium">Lançamentos</h3>
+					<h3 className="text-base font-semibold">Lançamentos</h3>
 					<p className="text-sm text-muted-foreground">
 						Configurações de exibição da tabela de movimentações.
 					</p>
@@ -166,6 +172,26 @@ export function PreferencesForm({
 						id="extrato-note-column"
 						checked={statementNoteAsColumn}
 						onCheckedChange={setExtratoNoteAsColumn}
+						disabled={isPending}
+					/>
+				</section>
+
+				<Separator />
+
+				<section className="flex items-center justify-between max-w-md">
+					<div className="space-y-2">
+						<Label htmlFor="show-transaction-summary" className="text-sm">
+							Resumo da operação
+						</Label>
+						<p className="text-sm text-muted-foreground">
+							Exibe um resumo dos dados preenchidos no final do modal de
+							lançamento.
+						</p>
+					</div>
+					<Switch
+						id="show-transaction-summary"
+						checked={showTransactionSummary}
+						onCheckedChange={setShowTransactionSummary}
 						disabled={isPending}
 					/>
 				</section>

@@ -13,23 +13,37 @@ export const uuidSchema = (entityName: string = "ID") =>
 		.uuid(`${entityName} inválido.`);
 
 /**
- * Optional/nullable decimal string schema
+ * Required positive decimal schema — accepts number or numeric string.
  */
-export const optionalDecimalSchema = z.union([
-	z.number().nullable(),
+export const requiredDecimalSchema = (fieldName: string = "valor") =>
 	z
-		.string()
-		.trim()
-		.optional()
-		.transform((value) =>
-			value && value.length > 0 ? value.replace(",", ".") : null,
-		)
-		.refine(
-			(value) => value === null || !Number.isNaN(Number.parseFloat(value)),
-			"Informe um valor numérico válido.",
-		)
-		.transform((value) => (value === null ? null : Number.parseFloat(value))),
-]);
+		.union([
+			z.number(),
+			z
+				.string()
+				.trim()
+				.min(1, `Informe o ${fieldName}.`)
+				.transform((value) => value.replace(",", ".")),
+		])
+		.transform((value, ctx) => {
+			const parsed =
+				typeof value === "number" ? value : Number.parseFloat(value);
+			if (Number.isNaN(parsed)) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "Informe um valor numérico válido.",
+				});
+				return z.NEVER;
+			}
+			if (parsed <= 0) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: `Informe um ${fieldName} maior que zero.`,
+				});
+				return z.NEVER;
+			}
+			return parsed;
+		});
 
 /**
  * Day of month schema (1-31)

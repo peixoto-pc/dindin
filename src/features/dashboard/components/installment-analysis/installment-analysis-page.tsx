@@ -130,14 +130,14 @@ export function InstallmentAnalysisPage({
 	return (
 		<div className="flex flex-col gap-4">
 			{/* Card de resumo principal */}
-			<Card className="border-none bg-primary/15">
+			<Card className="border-none bg-primary/10 shadow-none">
 				<CardContent className="flex flex-col items-start justify-center gap-2 py-2">
-					<p className="text-sm font-medium text-muted-foreground">
+					<p className="text-sm text-muted-foreground">
 						Se você pagar tudo que está selecionado:
 					</p>
 					<MoneyValues
 						amount={grandTotal}
-						className="text-3xl font-medium text-primary"
+						className="text-3xl font-semibold text-primary"
 					/>
 					<p className="text-sm text-muted-foreground">
 						{selectedCount} {selectedCount === 1 ? "parcela" : "parcelas"}{" "}
@@ -167,7 +167,7 @@ export function InstallmentAnalysisPage({
 
 			{/* Seção de Lançamentos Parcelados */}
 			{data.installmentGroups.length > 0 && (
-				<div className="flex flex-col gap-3">
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
 					{data.installmentGroups.map((group) => (
 						<InstallmentGroupCard
 							key={group.seriesId}

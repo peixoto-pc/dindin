@@ -106,6 +106,7 @@ docker-compose.override.yml
 .cursor/
 QWEN.md
 AGENTS.md
+.codex
 # === Backups locais ===
 /backup/
 

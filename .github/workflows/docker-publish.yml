@@ -85,20 +85,3 @@ jobs:
 
       - name: Image digest
         run: echo ${{ steps.meta.outputs.digest }}
-
-  deploy:
-    runs-on: self-hosted
-    needs: build-and-push
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    steps:
-      - name: Pull nova imagem
-        run: docker compose pull app
-        working-directory: ${{ vars.DEPLOY_PATH }}
-
-      - name: Restart com nova imagem
-        run: docker compose up -d
-        working-directory: ${{ vars.DEPLOY_PATH }}
-
-      - name: Limpar imagens antigas
-        run: docker image prune -f

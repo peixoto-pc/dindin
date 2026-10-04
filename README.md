@@ -6,7 +6,14 @@
   Projeto pessoal de gestão financeira. Self-hosted, manual e open source.
 </p>
 
-> **⚠️ Nota:** o OpenMonetis não está sendo encerrado, mas o desenvolvimento deve reduzir para quase zero daqui em diante. O app já cobre minhas demandas atuais de gerenciamento financeiro, então novas mudanças tendem a ser pontuais: correções, ajustes necessários e pequenas melhorias quando fizerem bastante sentido para meu uso.
+> [!IMPORTANT]
+> **OpenMonetis v1 — repositório em processo de arquivamento.** Esta versão, anteriormente chamada apenas de OpenMonetis, passa a ser chamada de **OpenMonetis v1** e não receberá mais atualizações.
+>
+> O projeto continua no **[OpenMonetis v2](https://github.com/felipegcoutinho/openmonetis-v2)**, com a migração para **TanStack**. Ao longo do desenvolvimento, o Next.js se mostrou complexo e pesado demais para as necessidades deste projeto, motivando a mudança de stack.
+>
+> **O v2 não terá todas as funcionalidades do v1 desde o início.** A implementação será gradual, especialmente dos recursos de análise com IA, sem garantia de que todas as funcionalidades do v1 serão incorporadas à nova versão.
+>
+> A documentação abaixo se refere ao OpenMonetis v1 e permanece como referência para esta versão.
 
 > **Não há versão online hospedada.** Você precisa clonar o repositório e rodar localmente ou no seu próprio servidor.
 

@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { AttachmentsPage } from "@/features/attachments/components/attachments-page";
-import { fetchAttachmentsForPeriod } from "@/features/attachments/queries";
+import { fetchAttachmentsPageData } from "@/features/attachments/queries";
+import { ContentErrorBoundary } from "@/shared/components/feedback/content-error-boundary";
 import { getUserId } from "@/shared/lib/auth/server";
 import { parsePeriodParam } from "@/shared/utils/period";
 
@@ -19,18 +20,32 @@ const getSingleParam = (
 	return Array.isArray(value) ? (value[0] ?? null) : value;
 };
 
-export default async function Page({ searchParams }: PageProps) {
+export default function Page({ searchParams }: PageProps) {
+	return (
+		<ContentErrorBoundary
+			title="Não foi possível carregar os anexos"
+			description="Os documentos e comprovantes não puderam ser carregados agora."
+		>
+			<AttachmentsContent searchParams={searchParams} />
+		</ContentErrorBoundary>
+	);
+}
+
+async function AttachmentsContent({ searchParams }: PageProps) {
 	await connection();
 	const userId = await getUserId();
 	const resolvedSearchParams = searchParams ? await searchParams : undefined;
 	const periodoParam = getSingleParam(resolvedSearchParams, "periodo");
 	const { period } = parsePeriodParam(periodoParam);
 
-	const attachments = await fetchAttachmentsForPeriod(userId, period);
+	const data = await fetchAttachmentsPageData(userId, period);
 
 	return (
 		<main className="flex flex-col gap-6">
-			<AttachmentsPage attachments={attachments} />
+			<AttachmentsPage
+				attachments={data?.attachments ?? []}
+				adminPayerId={data?.adminPayerId ?? ""}
+			/>
 		</main>
 	);
 }

@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { dashboardWidgetListStyles as styles } from "@/features/dashboard/components/dashboard-widget-list-styles";
 import type { DashboardInboxSnapshot } from "@/features/dashboard/lib/inbox-snapshot-queries";
 import type { DashboardWidgetQuickActionOptions } from "@/features/dashboard/widget-registry/widget-config";
 import {
@@ -201,8 +202,8 @@ export function InboxWidget({
 				const displayLogo = logoSrc ?? DEFAULT_INBOX_APP_LOGO;
 
 				return (
-					<div key={item.id} className="flex items-center justify-between py-2">
-						<div className="flex min-w-0 flex-1 items-center gap-2">
+					<div key={item.id} className={styles.row}>
+						<div className={styles.main}>
 							<Image
 								src={displayLogo}
 								alt={item.sourceAppName ?? ""}
@@ -212,11 +213,9 @@ export function InboxWidget({
 								unoptimized
 							/>
 
-							<div className="min-w-0">
-								<p className="truncate text-sm font-medium text-foreground">
-									{displayName}
-								</p>
-								<div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+							<div className={styles.textStack}>
+								<p className={styles.title}>{displayName}</p>
+								<div className={styles.meta}>
 									{item.sourceAppName && (
 										<span className="truncate">{item.sourceAppName}</span>
 									)}
@@ -227,9 +226,9 @@ export function InboxWidget({
 							</div>
 						</div>
 
-						<div className="ml-2 flex shrink-0 items-center gap-1">
+						<div className="ml-2 flex min-w-[7.5rem] shrink-0 items-center justify-end gap-1">
 							{amount !== null && (
-								<MoneyValues className="font-medium" amount={amount} />
+								<MoneyValues className={styles.trailingValue} amount={amount} />
 							)}
 							{amount === null && (
 								<span className="max-w-20 text-right text-xs leading-tight text-muted-foreground">

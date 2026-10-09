@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { dashboardWidgetListStyles as styles } from "@/features/dashboard/components/dashboard-widget-list-styles";
 import {
 	formatPaymentBreakdownPercentage,
 	formatPaymentBreakdownTransactionsLabel,
@@ -31,10 +32,8 @@ export function PaymentBreakdownListItem({
 	position,
 }: PaymentBreakdownListItemProps) {
 	return (
-		<div className="flex items-center gap-2 transition-all duration-300 py-1">
-			<span className="w-3 shrink-0 text-left text-xs font-medium text-muted-foreground">
-				{position}
-			</span>
+		<div className={styles.row}>
+			<span className={styles.rank}>{position}</span>
 			<div
 				className="flex size-9.5 shrink-0 items-center justify-center rounded-full"
 				style={{
@@ -45,26 +44,26 @@ export function PaymentBreakdownListItem({
 				{item.icon}
 			</div>
 
-			<div className="min-w-0 flex-1">
-				<div className="flex items-center justify-between">
+			<div className={styles.textStack}>
+				<div className="flex items-center justify-between gap-2">
 					{item.href ? (
-						<Link
-							href={item.href}
-							className="inline-flex items-center gap-1 text-sm font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
-						>
+						<Link href={item.href} className={styles.titleLink}>
 							<span className="truncate">{item.title}</span>
 						</Link>
 					) : (
-						<p className="text-sm font-medium text-foreground">{item.title}</p>
+						<p className={styles.title}>{item.title}</p>
 					)}
-					<MoneyValues className="shrink-0 font-medium" amount={item.amount} />
+					<MoneyValues
+						className={`shrink-0 ${styles.trailingValue}`}
+						amount={item.amount}
+					/>
 				</div>
 
-				<div className="flex items-center justify-between text-xs text-muted-foreground">
+				<div className={styles.meta}>
 					<span>
 						{formatPaymentBreakdownTransactionsLabel(item.transactions)}
 					</span>
-					<span>
+					<span className="ml-auto">
 						{formatPaymentBreakdownPercentage(item.percentage)} do total
 					</span>
 				</div>

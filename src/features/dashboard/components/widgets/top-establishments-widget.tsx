@@ -1,4 +1,5 @@
 import { RiStore2Line } from "@remixicon/react";
+import { dashboardWidgetListStyles as styles } from "@/features/dashboard/components/dashboard-widget-list-styles";
 import type { TopEstablishmentsData } from "@/features/dashboard/lib/top-establishments-queries";
 import { EstablishmentLogo } from "@/shared/components/entity-avatar";
 import MoneyValues from "@/shared/components/money-values";
@@ -30,30 +31,23 @@ export function TopEstablishmentsWidget({
 				<div className="flex flex-col">
 					{data.establishments.map((establishment, index) => {
 						return (
-							<div
-								key={establishment.id}
-								className="flex items-center justify-between gap-2 transition-all duration-300 py-1.5"
-							>
-								<span className="w-3 shrink-0 text-left text-xs font-medium text-muted-foreground">
-									{index + 1}
-								</span>
-								<div className="flex min-w-0 flex-1 items-center gap-2">
+							<div key={establishment.id} className={styles.row}>
+								<span className={styles.rank}>{index + 1}</span>
+								<div className={styles.main}>
 									<EstablishmentLogo name={establishment.name} size={37} />
 
-									<div className="min-w-0">
-										<p className="truncate text-sm font-medium text-foreground">
-											{establishment.name}
-										</p>
-										<p className="text-xs text-muted-foreground">
+									<div className={styles.textStack}>
+										<p className={styles.title}>{establishment.name}</p>
+										<p className={styles.meta}>
 											{formatOccurrencesLabel(establishment.occurrences)} ·
 											total acumulado
 										</p>
 									</div>
 								</div>
 
-								<div className="shrink-0 text-foreground">
+								<div className={styles.trailing}>
 									<MoneyValues
-										className="font-medium"
+										className={styles.trailingValue}
 										amount={establishment.amount}
 									/>
 								</div>

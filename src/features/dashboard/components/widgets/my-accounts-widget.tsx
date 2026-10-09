@@ -10,6 +10,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTransition } from "react";
 import { toast } from "sonner";
+import { dashboardWidgetListStyles as styles } from "@/features/dashboard/components/dashboard-widget-list-styles";
 import type { DashboardAccount } from "@/features/dashboard/lib/accounts-queries";
 import { updateMyAccountsWidgetPreference } from "@/features/dashboard/widget-registry/widget-actions";
 import MoneyValues from "@/shared/components/money-values";
@@ -139,12 +140,9 @@ export function MyAccountsWidget({
 							const logoSrc = resolveLogoSrc(account.logo);
 
 							return (
-								<li
-									key={account.id}
-									className="flex items-center justify-between py-1.5 transition-all duration-300"
-								>
-									<div className="flex min-w-0 flex-1 items-center gap-2 py-1">
-										<div className="relative flex size-9.5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10">
+								<li key={account.id} className={styles.row}>
+									<div className={styles.main}>
+										<div className="relative flex size-9.5 shrink-0 items-center justify-center overflow-hidden rounded-full">
 											{logoSrc ? (
 												<Image
 													src={logoSrc}
@@ -161,18 +159,18 @@ export function MyAccountsWidget({
 											)}
 										</div>
 
-										<div className="min-w-0">
+										<div className={styles.textStack}>
 											<Link
 												prefetch
 												href={`/accounts/${
 													account.id
 												}/statement?periodo=${formatPeriodForUrl(period)}`}
-												className="inline-flex max-w-full items-center gap-1 text-sm font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
+												className={styles.titleLink}
 											>
 												<span className="truncate">{account.name}</span>
 											</Link>
 
-											<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+											<div className={styles.meta}>
 												<span className="truncate">{account.accountType}</span>
 												{account.excludeFromBalance ? (
 													<Tooltip>
@@ -195,10 +193,10 @@ export function MyAccountsWidget({
 										</div>
 									</div>
 
-									<div className="flex flex-col items-end gap-0.5 text-right">
+									<div className={styles.trailing}>
 										<MoneyValues
 											className={cn(
-												"font-medium",
+												styles.trailingValue,
 												account.balance < 0 && "text-destructive",
 											)}
 											amount={account.balance}

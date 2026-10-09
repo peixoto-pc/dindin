@@ -143,11 +143,14 @@ export async function parseSantanderPdf(
 				const iofAmount = parseBRL(iofAmounts[0][0]);
 				if (iofAmount > 0 && iofAmount < 500) {
 					const lastTx = transactions[transactions.length - 1];
+					const iofDescription = `IOF - ${lastTx.description}`;
 					transactions.push({
 						externalId: null,
+						externalIdOccurrence: 0,
 						date: lastDate,
 						amount: iofAmount,
-						description: `IOF - ${lastTx.description}`,
+						description: iofDescription,
+						sourceDescription: iofDescription,
 						transactionType: "expense",
 					});
 				}
@@ -182,9 +185,11 @@ export async function parseSantanderPdf(
 		lastDate = inferYear(dateMatch[1], dateMatch[2], billingEndDate);
 		transactions.push({
 			externalId: null,
+			externalIdOccurrence: 0,
 			date: lastDate,
 			amount: Math.abs(amount),
 			description,
+			sourceDescription: descRaw,
 			transactionType: amount < 0 ? "income" : "expense",
 		});
 	}

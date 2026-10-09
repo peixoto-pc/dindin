@@ -83,9 +83,11 @@ export function parseCsv(content: string): ImportStatement {
 
 		transactions.push({
 			externalId: null,
+			externalIdOccurrence: 0,
 			date,
 			amount,
 			description,
+			sourceDescription: description,
 			transactionType,
 		});
 	}

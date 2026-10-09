@@ -45,6 +45,7 @@ type InstallmentDetail = {
 export type InstallmentGroup = {
 	seriesId: string;
 	name: string;
+	note: string | null;
 	paymentMethod: string;
 	cardId: string | null;
 	cartaoName: string | null;
@@ -80,6 +81,7 @@ export async function fetchInstallmentAnalysis(
 			id: transactions.id,
 			seriesId: transactions.seriesId,
 			name: transactions.name,
+			note: transactions.note,
 			amount: transactions.amount,
 			paymentMethod: transactions.paymentMethod,
 			currentInstallment: transactions.currentInstallment,
@@ -150,6 +152,7 @@ export async function fetchInstallmentAnalysis(
 			seriesMap.set(row.seriesId, {
 				seriesId: row.seriesId,
 				name: row.name,
+				note: row.note,
 				paymentMethod: row.paymentMethod,
 				cardId: row.cardId,
 				cartaoName: row.cartaoName,

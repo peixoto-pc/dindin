@@ -1,4 +1,4 @@
-# CLAUDE.md - OpenMonetis
+# AGENTS.md - OpenMonetis
 
 > Self-hosted personal finance app (Next.js 16, React 19, PostgreSQL, Drizzle ORM, Better Auth, Tailwind 4, shadcn/ui).
 > Portuguese UI, English folders/imports. Linter: Biome 2.x. Package manager: pnpm.
@@ -16,7 +16,7 @@
 3. **Periods** usam formato `YYYY-MM` (ex: `"2025-11"`). Utils em `src/shared/utils/period/`.
 4. **Moeda**: R$ com 2 decimais. DB: `numeric(12, 2)`. Utils em `src/shared/utils/currency.ts`.
 5. **Revalidation**: usar `revalidateForEntity("entity")` de `src/shared/lib/actions/helpers.ts` apos mutations.
-6. **Versionamento**: registrar mudancas no `CHANGELOG.md` seguindo Keep a Changelog, também altere o `package.json` e `readme.md` (Badges do README.md). Cada versão deve ter um parágrafo introdutório em linguagem humana logo abaixo do cabeçalho `## [x.y.z]`, antes das seções `### Adicionado/Alterado/Removido` — descrevendo em prosa o que a versão representa (ex: "Esta versão foca em polimento visual e reorganização interna...").
+6. **Versionamento e publicação**: registrar mudancas no `CHANGELOG.md` seguindo Keep a Changelog, também alterar o `package.json` e o badge de versão do `README.md`. Cada versão deve ter um parágrafo introdutório em linguagem humana logo abaixo do cabeçalho `## [x.y.z]`, antes das seções `### Adicionado/Alterado/Removido` — descrevendo em prosa o que a versão representa (ex: "Esta versão foca em polimento visual e reorganização interna..."). A `main` executa somente a CI; imagens Docker e GitHub Releases são publicadas exclusivamente por tags SemVer no formato `vX.Y.Z`. Antes de criar a tag, confirmar que a CI da `main` passou e que tag, `package.json`, `CHANGELOG.md` e badge do `README.md` usam a mesma versão. A tag deve apontar para o commit validado. Criar ou enviar uma tag dispara publicação externa (`X.Y.Z`, `X.Y`, `X` e `latest` no Docker Hub, seguida da GitHub Release), portanto agentes nunca devem criar ou fazer push de tags sem autorização explícita do usuário. Quando o usuário pedir **"commit e push"** em uma mudança que prepara uma nova versão, isso conta como autorização explícita para executar o fluxo completo: commitar, enviar a `main`, aguardar a CI da `main` passar, criar a tag SemVer correspondente à versão preparada e enviar essa tag. Se não houver versão preparada ou se houver divergência entre `package.json`, `CHANGELOG.md`, badge do `README.md` e tag pretendida, parar e pedir confirmação. Não voltar a publicar `latest` diretamente de pushes na `main`.
 7. **Comunicacao**: responder em portugues clara e direta com o time.
 8. **Commit messages**: agrupar por natureza. em pt-br. seguindo o padrao do sistema.
 9. **README.md**: sempre que fizer alteracoes significativas, atualize o README.md.
@@ -364,3 +364,13 @@ Erros nao devem expor stack traces, paths ou nomes de bibliotecas ao cliente. Us
 Verificar pacotes novos sugeridos pela IA em npmjs.com antes de instalar. Red flags: menos de 1.000 downloads/semana, publicado nos ultimos 30 dias, nome muito parecido com pacote popular. Rodar `pnpm audit` periodicamente.
 
 ---
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

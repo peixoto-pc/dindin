@@ -2,6 +2,7 @@
 
 import { RiArrowUpDoubleLine } from "@remixicon/react";
 import { useMemo } from "react";
+import { dashboardWidgetListStyles as styles } from "@/features/dashboard/components/dashboard-widget-list-styles";
 import type {
 	TopExpense,
 	TopExpensesData,
@@ -49,29 +50,22 @@ export function TopExpensesWidget({ data }: TopExpensesWidgetProps) {
 				<div className="flex flex-col">
 					{expenses.map((expense, index) => {
 						return (
-							<div
-								key={expense.id}
-								className="flex items-center justify-between gap-2 transition-all duration-300 py-1.5"
-							>
-								<span className="w-3 shrink-0 text-left text-xs font-medium text-muted-foreground">
-									{index + 1}
-								</span>
-								<div className="flex min-w-0 flex-1 items-center gap-2">
+							<div key={expense.id} className={styles.row}>
+								<span className={styles.rank}>{index + 1}</span>
+								<div className={styles.main}>
 									<EstablishmentLogo name={expense.name} size={37} />
 
-									<div className="min-w-0">
-										<p className="truncate text-sm font-medium text-foreground">
-											{expense.name}
-										</p>
-										<p className="text-xs text-muted-foreground">
+									<div className={styles.textStack}>
+										<p className={styles.title}>{expense.name}</p>
+										<p className={styles.meta}>
 											{formatTransactionDate(expense.purchaseDate)}
 										</p>
 									</div>
 								</div>
 
-								<div className="shrink-0 text-foreground">
+								<div className={styles.trailing}>
 									<MoneyValues
-										className="font-medium"
+										className={styles.trailingValue}
 										amount={expense.amount}
 									/>
 								</div>

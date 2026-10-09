@@ -32,6 +32,7 @@ export function ExpandableWidgetCard({
 		if (!element) return;
 
 		let frameId = 0;
+		const observedElements = new Set<Element>();
 
 		const checkOverflow = () => {
 			cancelAnimationFrame(frameId);
@@ -44,13 +45,33 @@ export function ExpandableWidgetCard({
 			});
 		};
 
+		const observeContentElements = (resizeObserver: ResizeObserver) => {
+			for (const child of Array.from(element.children)) {
+				if (!observedElements.has(child)) {
+					resizeObserver.observe(child);
+					observedElements.add(child);
+				}
+			}
+		};
+
 		checkOverflow();
 
 		const resizeObserver = new ResizeObserver(checkOverflow);
 		resizeObserver.observe(element);
+		observeContentElements(resizeObserver);
+
+		const mutationObserver = new MutationObserver(() => {
+			observeContentElements(resizeObserver);
+			checkOverflow();
+		});
+		mutationObserver.observe(element, {
+			childList: true,
+			subtree: true,
+		});
 
 		return () => {
 			cancelAnimationFrame(frameId);
+			mutationObserver.disconnect();
 			resizeObserver.disconnect();
 		};
 	}, []);

@@ -1,5 +1,6 @@
 import { RiCheckboxCircleFill, RiGroupLine } from "@remixicon/react";
 import Link from "next/link";
+import { dashboardWidgetListStyles as styles } from "@/features/dashboard/components/dashboard-widget-list-styles";
 import { PercentageChangeIndicator } from "@/features/dashboard/components/percentage-change-indicator";
 import {
 	buildInvoiceDetailsHref,
@@ -62,18 +63,14 @@ export function InvoiceListItem({ invoice, onPay }: InvoiceListItemProps) {
 			: null;
 
 	const linkNode = (
-		<Link
-			prefetch
-			href={detailHref}
-			className="inline-flex max-w-full items-center gap-1 text-sm font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
-		>
+		<Link prefetch href={detailHref} className={styles.titleLink}>
 			<span className="truncate">{invoice.cardName}</span>
 		</Link>
 	);
 
 	return (
-		<li className="flex items-center justify-between transition-all duration-300 py-1.5">
-			<div className="flex min-w-0 flex-1 items-center gap-2 py-1">
+		<li className={styles.row}>
+			<div className={styles.main}>
 				<InvoiceLogo
 					cardName={invoice.cardName}
 					logo={invoice.logo}
@@ -81,7 +78,7 @@ export function InvoiceListItem({ invoice, onPay }: InvoiceListItemProps) {
 					containerClassName="size-9.5"
 				/>
 
-				<div className="min-w-0">
+				<div className={styles.textStack}>
 					<div className="flex max-w-full items-center gap-1">
 						{hasBreakdown ? (
 							<HoverCard openDelay={150}>
@@ -123,9 +120,14 @@ export function InvoiceListItem({ invoice, onPay }: InvoiceListItemProps) {
 														className="font-medium"
 														amount={share.amount}
 													/>
-													<PercentageChangeIndicator
-														value={share.percentageChange}
-													/>
+													{share.percentageChange !== null ? (
+														<span className="flex items-center gap-1 text-xs text-muted-foreground">
+															<PercentageChangeIndicator
+																value={share.percentageChange}
+															/>
+															<span>vs. mês ant.</span>
+														</span>
+													) : null}
 												</div>
 											</li>
 										))}
@@ -150,7 +152,7 @@ export function InvoiceListItem({ invoice, onPay }: InvoiceListItemProps) {
 						) : null}
 					</div>
 
-					<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+					<div className={styles.meta}>
 						{!isPaid ? (
 							dueTooltipLabel ? (
 								<Tooltip>
@@ -199,13 +201,13 @@ export function InvoiceListItem({ invoice, onPay }: InvoiceListItemProps) {
 				</div>
 			</div>
 
-			<div className="flex shrink-0 flex-col items-end">
+			<div className={styles.trailing}>
 				<MoneyValues
-					className="font-medium"
+					className={styles.trailingValue}
 					amount={Math.abs(invoice.totalAmount)}
 				/>
 				{isPaid ? (
-					<span className="flex h-7 items-center gap-0.5 text-xs font-medium text-success">
+					<span className={`${styles.trailingMeta} text-success`}>
 						<RiCheckboxCircleFill className="size-3.5" /> Pago
 					</span>
 				) : (
@@ -213,7 +215,7 @@ export function InvoiceListItem({ invoice, onPay }: InvoiceListItemProps) {
 						type="button"
 						size="sm"
 						variant="link"
-						className="-mr-1.5 h-7 px-1.5 py-0"
+						className={styles.actionButton}
 						onClick={() => onPay(invoice.id)}
 					>
 						{isOverdue ? (

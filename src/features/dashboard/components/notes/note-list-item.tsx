@@ -3,6 +3,7 @@ import {
 	RiFileList2Line,
 	RiPencilLine,
 } from "@remixicon/react";
+import { dashboardWidgetListStyles as styles } from "@/features/dashboard/components/dashboard-widget-list-styles";
 import type { Note } from "@/features/notes/components/types";
 import {
 	buildNoteDisplayTitle,
@@ -33,18 +34,16 @@ export function NoteListItem({
 	const isTask = note.type === "tarefa";
 
 	return (
-		<li className="group flex items-center justify-between gap-2 py-1.5 transition-all duration-300">
-			<div className="min-w-0 flex-1">
-				<p className="truncate text-sm font-medium text-foreground">
-					{displayTitle}
-				</p>
-				<div className="mt-1 flex min-w-0 items-center gap-2">
+		<li className={`group ${styles.row}`}>
+			<div className={styles.textStack}>
+				<p className={styles.title}>{displayTitle}</p>
+				<div className={styles.meta}>
 					{isTask ? (
 						<Badge variant="outline" className="h-5 px-1.5 text-xs">
 							{getNoteTasksSummary(note)}
 						</Badge>
 					) : null}
-					<p className="truncate text-xs text-muted-foreground">
+					<p className="truncate">
 						<span className="inline-flex items-center gap-1">
 							<RiCalendarLine className="size-3.5 shrink-0" />
 							{createdAtLabel}
@@ -53,7 +52,7 @@ export function NoteListItem({
 				</div>
 			</div>
 
-			<div className="flex shrink-0 items-center gap-0.5">
+			<div className="flex min-w-[4.5rem] shrink-0 items-center justify-end gap-0.5">
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<Button

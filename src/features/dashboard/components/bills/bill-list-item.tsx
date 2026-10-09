@@ -8,6 +8,7 @@ import {
 	isIncomeBill,
 } from "@/features/dashboard/bills/bills-helpers";
 import type { DashboardBill } from "@/features/dashboard/bills/bills-queries";
+import { dashboardWidgetListStyles as styles } from "@/features/dashboard/components/dashboard-widget-list-styles";
 import { EstablishmentLogo } from "@/shared/components/entity-avatar";
 import MoneyValues from "@/shared/components/money-values";
 import { Button } from "@/shared/components/ui/button";
@@ -47,25 +48,22 @@ export function BillListItem({ bill, period, onPay }: BillListItemProps) {
 	const href = buildTransactionsHref(bill.name, period);
 
 	return (
-		<li className="flex items-center justify-between transition-all duration-300 py-1.5">
-			<div className="flex min-w-0 flex-1 items-center gap-2 py-0.5">
+		<li className={styles.row}>
+			<div className={styles.main}>
 				<EstablishmentLogo name={bill.name} size={37} />
 
-				<div className="min-w-0">
-					<Link
-						href={href}
-						className="inline-flex max-w-full items-center gap-1 text-sm font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
-					>
+				<div className={styles.textStack}>
+					<Link href={href} className={styles.titleLink}>
 						<span className="truncate">{bill.name}</span>
 					</Link>
-					<div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+					<div className={styles.meta}>
 						{statusLabel ? (
 							statusTooltipLabel ? (
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<span
 											className={cn(
-												"cursor-help rounded-full py-0.5",
+												"cursor-help",
 												bill.isSettled && "text-success font-semibold",
 												overdue && "text-destructive font-semibold",
 											)}
@@ -80,7 +78,6 @@ export function BillListItem({ bill, period, onPay }: BillListItemProps) {
 							) : (
 								<span
 									className={cn(
-										"rounded-full py-0.5",
 										bill.isSettled && "text-success font-semibold",
 										overdue && "text-destructive font-semibold",
 									)}
@@ -93,10 +90,10 @@ export function BillListItem({ bill, period, onPay }: BillListItemProps) {
 				</div>
 			</div>
 
-			<div className="flex shrink-0 flex-col items-end">
-				<MoneyValues className="font-medium" amount={bill.amount} />
+			<div className={styles.trailing}>
+				<MoneyValues className={styles.trailingValue} amount={bill.amount} />
 				{bill.isSettled ? (
-					<span className="flex h-7 items-center gap-0.5 text-xs font-medium text-success">
+					<span className={`${styles.trailingMeta} text-success`}>
 						<RiCheckboxCircleFill className="size-3.5" />{" "}
 						{income ? "Recebido" : "Pago"}
 					</span>
@@ -105,7 +102,7 @@ export function BillListItem({ bill, period, onPay }: BillListItemProps) {
 						type="button"
 						size="sm"
 						variant="link"
-						className="-mr-1.5 h-7 px-1.5 py-0"
+						className={styles.actionButton}
 						onClick={() => onPay(bill.id)}
 					>
 						{overdue ? (

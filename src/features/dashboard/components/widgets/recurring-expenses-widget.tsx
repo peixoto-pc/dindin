@@ -1,4 +1,5 @@
 import { RiRefreshLine } from "@remixicon/react";
+import { dashboardWidgetListStyles as styles } from "@/features/dashboard/components/dashboard-widget-list-styles";
 import type { RecurringExpensesData } from "@/features/dashboard/expenses/recurring-expenses-queries";
 import { EstablishmentLogo } from "@/shared/components/entity-avatar";
 import MoneyValues from "@/shared/components/money-values";
@@ -36,31 +37,27 @@ export function RecurringExpensesWidget({
 				.sort((a, b) => b.amount - a.amount)
 				.map((expense) => {
 					return (
-						<div
-							key={expense.id}
-							className="flex items-center gap-2 transition-all duration-300 py-1.5"
-						>
-							<EstablishmentLogo name={expense.name} size={37} />
+						<div key={expense.id} className={styles.row}>
+							<div className={styles.main}>
+								<EstablishmentLogo name={expense.name} size={37} />
 
-							<div className="min-w-0 flex-1">
-								<div className="flex items-center justify-between">
-									<p className="truncate text-foreground text-sm font-medium">
-										{expense.name}
-									</p>
-
-									<MoneyValues
-										className="font-medium"
-										amount={expense.amount}
-									/>
+								<div className={styles.textStack}>
+									<p className={styles.title}>{expense.name}</p>
+									<div className={styles.meta}>
+										<span className="inline-flex min-w-0 items-center gap-1 [&_svg]:size-3.5">
+											{getPaymentMethodIcon(expense.paymentMethod)}
+											{expense.paymentMethod}
+										</span>
+										<span>{formatOccurrences(expense.recurrenceCount)}</span>
+									</div>
 								</div>
+							</div>
 
-								<div className="flex items-center justify-between text-xs text-muted-foreground">
-									<span className="inline-flex items-center gap-1 [&_svg]:size-3.5">
-										{getPaymentMethodIcon(expense.paymentMethod)}
-										{expense.paymentMethod}
-									</span>
-									<span>{formatOccurrences(expense.recurrenceCount)}</span>
-								</div>
+							<div className={styles.trailing}>
+								<MoneyValues
+									className={styles.trailingValue}
+									amount={expense.amount}
+								/>
 							</div>
 						</div>
 					);

@@ -109,6 +109,8 @@ export default async function Page({ params, searchParams }: PageProps) {
 		filters: searchFilters,
 		slugMaps,
 		accountId: account.id,
+		hideAnticipatedInstallments:
+			userPreferences?.hideAnticipatedInstallments ?? false,
 	});
 
 	const transactionsPage = await fetchAccountTransactionsPage(
@@ -233,6 +235,9 @@ export default async function Page({ params, searchParams }: PageProps) {
 					)}
 					noteAsColumn={userPreferences?.statementNoteAsColumn ?? false}
 					columnOrder={userPreferences?.transactionsColumnOrder ?? null}
+					groupTransactionsByDate={
+						userPreferences?.groupTransactionsByDate ?? true
+					}
 					attachmentMaxSizeMb={userPreferences?.attachmentMaxSizeMb ?? 50}
 				/>
 			</section>

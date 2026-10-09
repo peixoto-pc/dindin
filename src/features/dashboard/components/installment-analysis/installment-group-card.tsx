@@ -2,6 +2,7 @@
 
 import {
 	RiBankCard2Line,
+	RiChat1Line,
 	RiCheckboxCircleFill,
 	RiFileList2Line,
 	RiTimeLine,
@@ -30,6 +31,11 @@ import {
 	DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { Progress } from "@/shared/components/ui/progress";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/shared/components/ui/tooltip";
 import { resolveLogoSrc } from "@/shared/lib/logo";
 import { cn } from "@/shared/utils";
 import type { InstallmentGroup } from "./types";
@@ -83,6 +89,7 @@ export function InstallmentGroupCard({
 	);
 	const cardLogoSrc = resolveLogoSrc(group.cartaoLogo);
 	const cardName = group.cartaoName ?? "Compra parcelada";
+	const hasNote = Boolean(group.note?.trim().length);
 	const untrackedLabel =
 		group.untrackedInstallments === 1
 			? "1 parcela anterior fora do acompanhamento"
@@ -121,8 +128,28 @@ export function InstallmentGroupCard({
 							<div className="flex items-center gap-3 flex-wrap">
 								<EstablishmentLogo name={group.name} size={40} />
 								<div className="flex-1 min-w-0">
-									<CardTitle className="text-base truncate">
-										{group.name}
+									<CardTitle className="flex items-center gap-1 text-base">
+										<span className="truncate">{group.name}</span>
+										{hasNote ? (
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<span className="inline-flex shrink-0 rounded-full p-1 hover:bg-accent transition-colors duration-300">
+														<RiChat1Line
+															className="h-4 w-4 text-muted-foreground"
+															aria-hidden
+														/>
+														<span className="sr-only">Ver anotação</span>
+													</span>
+												</TooltipTrigger>
+												<TooltipContent
+													side="top"
+													align="start"
+													className="max-w-xs whitespace-pre-line"
+												>
+													{group.note}
+												</TooltipContent>
+											</Tooltip>
+										) : null}
 									</CardTitle>
 									<CardDescription className="flex min-w-0 items-center gap-1 text-xs">
 										{cardLogoSrc ? (
@@ -235,8 +262,28 @@ export function InstallmentGroupCard({
 						<div className="flex items-center gap-3">
 							<EstablishmentLogo name={group.name} size={32} />
 							<div className="min-w-0">
-								<DialogTitle className="truncate text-base">
-									{group.name}
+								<DialogTitle className="flex items-center gap-1 text-base">
+									<span className="truncate">{group.name}</span>
+									{hasNote ? (
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<span className="inline-flex shrink-0 rounded-full p-1 hover:bg-accent transition-colors duration-300">
+													<RiChat1Line
+														className="h-4 w-4 text-muted-foreground"
+														aria-hidden
+													/>
+													<span className="sr-only">Ver anotação</span>
+												</span>
+											</TooltipTrigger>
+											<TooltipContent
+												side="top"
+												align="start"
+												className="max-w-xs whitespace-pre-line"
+											>
+												{group.note}
+											</TooltipContent>
+										</Tooltip>
+									) : null}
 								</DialogTitle>
 								<div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
 									{cardLogoSrc ? (

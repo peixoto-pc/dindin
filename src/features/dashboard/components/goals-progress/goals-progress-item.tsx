@@ -1,5 +1,6 @@
 import { RiPencilLine } from "@remixicon/react";
 import Link from "next/link";
+import { dashboardWidgetListStyles as styles } from "@/features/dashboard/components/dashboard-widget-list-styles";
 import {
 	clampGoalProgress,
 	formatGoalProgressPercentage,
@@ -30,7 +31,7 @@ export function GoalProgressItem({ item, onEdit }: GoalProgressItemProps) {
 	const usedPercentageLabel = formatGoalProgressPercentage(item.usedPercentage);
 
 	return (
-		<li className="group py-2 transition-all duration-300">
+		<li className="group py-1.5 transition-all duration-300">
 			<div className="flex items-start justify-between gap-3">
 				<div className="flex min-w-0 flex-1 items-start gap-2">
 					<CategoryIconBadge
@@ -42,16 +43,14 @@ export function GoalProgressItem({ item, onEdit }: GoalProgressItemProps) {
 						{item.categoryId ? (
 							<Link
 								href={`/categories/${item.categoryId}?periodo=${formatPeriodForUrl(item.period)}`}
-								className="block truncate text-sm font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
+								className={`${styles.title} block underline-offset-2 hover:text-primary hover:underline`}
 							>
 								{item.categoryName}
 							</Link>
 						) : (
-							<p className="truncate text-sm font-medium text-foreground">
-								{item.categoryName}
-							</p>
+							<p className={styles.title}>{item.categoryName}</p>
 						)}
-						<p className="mt-0.5 text-xs text-muted-foreground">
+						<p className="mt-0.5 text-xs leading-4 text-muted-foreground">
 							<MoneyValues className="font-medium" amount={item.spentAmount} />{" "}
 							de{" "}
 							<MoneyValues className="font-medium" amount={item.budgetAmount} />

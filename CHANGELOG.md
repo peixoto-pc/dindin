@@ -5,6 +5,118 @@ Todas as mudanças notáveis deste projeto serão documentadas neste arquivo.
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/),
 e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [2.7.13] - 2026-08-09
+
+Esta versão atualiza a base técnica do OpenMonetis com as correções de segurança e desempenho do Next.js 16.3, acelera as verificações de tipos, melhora a recuperação de falhas nas áreas mais complexas do aplicativo e corrige a importação de extratos OFX que reutilizam identificadores bancários.
+
+### Adicionado
+- Interface: dashboard, Insights, anexos e relatórios agora possuem limites de erro próprios, preservando a navegação e oferecendo uma nova tentativa sem derrubar toda a área autenticada.
+- Desenvolvimento: agentes de código passam a consultar a documentação do Next.js correspondente à versão instalada no projeto.
+
+### Alterado
+- ATENÇÃO — mudança no banco de dados: esta versão adiciona a coluna ofx_import_fingerprint e substitui o índice único baseado apenas no FITID por um índice de fingerprint. Aplique a migração 0034_superb_blonde_phantom.sql antes de iniciar a aplicação atualizada (pnpm run db:migrate em instalações manuais). A imagem Docker tenta aplicar as migrações automaticamente durante a inicialização.
+- Banco de dados: a deduplicação de importações OFX agora considera os dados completos e a ocorrência de cada transação, em vez de depender somente do FITID fornecido pela instituição financeira.
+- Dependências: Next.js atualizado para 16.3.0 e TypeScript para 7.0.2.
+- Desenvolvimento: Turbopack e seus caches passam a usar os padrões nativos do Next.js 16.3, removendo flags redundantes da configuração.
+- CI: o cache de build em `.next/cache` agora é preservado entre execuções para acelerar compilações sucessivas.
+
+### Corrigido
+- Importação: transações OFX legítimas que compartilham o mesmo FITID agora permanecem independentes na revisão e podem ser importadas sem sobrescrever linhas, travar seletores ou serem descartadas como duplicatas (issue #88 - @cunhanai).
+- Interface: a identidade estável de cada linha evita duplicações visuais e mantém funcionando a seleção, a escolha de categoria e a rolagem da tabela de revisão.
+- Segurança: incorporadas as correções do Next.js 16.3 para Server Actions, Proxy, cache de respostas e otimização de imagens.
+- Segurança: o otimizador de imagens agora aceita somente avatares do Google e logos do Logo.dev, removendo os curingas globais de HTTP e HTTPS; anexos do S3 continuam servidos diretamente, sem passar pelo otimizador.
+
+## [2.7.12] - 2026-06-30
+
+Esta versão corrige a seleção de faturas e períodos em popovers usados dentro de diálogos, alinhando esses componentes ao mesmo comportamento seguro aplicado recentemente aos seletores de data.
+
+### Corrigido
+- Lançamentos: o seletor inline de fatura volta a aceitar cliques no mês em diálogos de criação/edição e no modal de múltiplos lançamentos.
+- Períodos: botões internos do seletor mensal agora são explicitamente `type="button"`, evitando submits acidentais quando o componente aparece dentro de formulários.
+- Interface: popovers de período e escolha de logo de estabelecimento passam a usar modo modal quando podem aparecer sobre diálogos, preservando foco e clique.
+
+## [2.7.11] - 2026-06-28
+
+Esta atualização melhora a leitura diária dos lançamentos e deixa a nova visualização opcional, mantendo a possibilidade de voltar ao formato anterior quando a lista agrupada não for a melhor escolha para o usuário.
+
+### Adicionado
+- Preferências: nova opção `Agrupar por data` em Ajustes > Preferências > Lançamentos para alternar entre a lista agrupada por data e a visualização anterior.
+- Lançamentos: a lista agora pode exibir uma barra de data por grupo no formato `TER, 26 JUN 2026`, reunindo os lançamentos daquele dia.
+
+### Alterado
+- Lançamentos: quando o agrupamento por data está ativo, os cards e linhas deixam de repetir a data em cada item, reduzindo ruído visual e mantendo vencimentos de boleto como informação do lançamento.
+- Lançamentos: a preferência de agrupamento por data é aplicada nas listagens principais, extratos de conta, faturas de cartão, detalhes de pessoa e detalhes de categoria.
+- Interface: checkboxes passam a usar um visual mais compacto.
+- Documentação: o README agora cita o agrupamento por data entre as opções de personalização.
+
+### Corrigido
+- Lançamentos: o seletor de data em modais de criação e edição volta a aceitar a data selecionada no calendário.
+
+## [2.7.10] - 2026-06-27
+
+Esta versão ajusta a experiência de leitura dos lançamentos parcelados após antecipações, permitindo esconder parcelas já liquidadas por antecipação sem perder o histórico quando ele ainda for necessário.
+
+### Adicionado
+- Ajustes: nova preferência `Ocultar parcelas antecipadas` para remover da tabela lançamentos marcados como parcela antecipada.
+
+### Alterado
+- Lançamentos: a preferência passa a ser aplicada nas listagens principais, extratos de conta, faturas de cartão, detalhes de pessoa, detalhes de categoria e exportação de lançamentos, preservando paginação e contagens visíveis.
+
+## [2.7.9] - 2026-06-21
+
+Esta versão torna a publicação mais previsível ao separar a validação contínua da entrega de versões oficiais. Pull requests e a branch principal continuam sendo verificadas, enquanto imagens Docker e releases passam a ser produzidas somente a partir de uma tag SemVer validada.
+
+### Alterado
+- CI: pull requests e pushes na `main` agora executam geração de tipos, verificação TypeScript, lint e build sem publicar imagens.
+- Releases: tags `vX.Y.Z` agora validam sua correspondência com o `package.json` e o `CHANGELOG.md` antes de publicar as imagens Docker e criar a GitHub Release.
+- Docker: as tags versionadas e `latest` passam a ser publicadas exclusivamente por releases oficiais, depois das verificações de qualidade.
+
+## [2.7.8] - 2026-06-21
+
+Esta versão deixa documentos e comprovantes mais fáceis de guardar e encontrar sem tirar o foco da rotina financeira. Agora é possível manter arquivos junto às notas, consultar a galeria por pessoa com identificação visual e abrir uma categoria diretamente das tendências do dashboard, sempre preservando o contexto do período selecionado.
+
+### Adicionado
+- Anotações: itens do tipo `Nota` agora aceitam anexos PDF, JPEG, PNG e WebP na criação e na edição, com consulta e download nos detalhes e respeito ao limite configurado pelo usuário.
+- Anexos: a galeria agora oferece filtro por pessoa, incluindo a pessoa principal, pessoas específicas e uma visão consolidada de todas as pessoas.
+
+### Alterado
+- Anexos: os cards da galeria agora identificam a pessoa vinculada ao lançamento e o filtro exibe os respectivos avatares, preservando o contexto quando vários responsáveis são exibidos.
+- Dashboard: os nomes no widget `Tendências de categorias` agora levam aos detalhes da categoria mantendo o período selecionado.
+
+## [2.7.7] - 2026-06-20
+
+Esta versão faz ajustes pontuais de leitura nos resumos financeiros e no dashboard, reforçando a identidade visual de cartões e contas e deixando as listas dos widgets mais consistentes sem alterar a estrutura de navegação das páginas.
+
+### Alterado
+- Cartões e contas: os cabeçalhos dos resumos agora destacam melhor o logo, o nome da entidade e o período exibido.
+- Dashboard: as listas dos widgets agora compartilham padrões de altura, espaçamento, alinhamento e truncamento para melhorar a leitura de valores, status e metadados.
+
+## [2.7.6] - 2026-06-20
+
+Esta versão melhora dois fluxos importantes: a importação de planilhas fica mais esperta ao reconhecer categorias já informadas no arquivo, e lançamentos avulsos podem ser reorganizados como parcelamentos ou recorrências sem precisar recriá-los manualmente.
+
+As funcionalidades desta versão foram desenvolvidas originalmente por Yuri Argolo (`yurnasg`) e adaptadas para integração ao projeto principal.
+
+### Adicionado
+- Importação: planilhas XLS/XLSX agora aceitam a coluna `Categoria` no template e tentam mapear automaticamente o valor para uma categoria existente compatível com o tipo do lançamento.
+- Lançamentos: lançamentos à vista agora podem ser convertidos em recorrentes diretamente pelo menu de ações.
+- Lançamentos: lançamentos à vista de cartão de crédito agora podem ser convertidos em uma série parcelada informando o total de parcelas.
+
+### Alterado
+- Lançamentos: conversões para séries respeitam faturas pagas e limite disponível do cartão antes de criar novos movimentos.
+
+## [2.7.5] - 2026-06-13
+
+Esta versão faz um polimento pontual no dashboard, deixando os widgets mais explicativos, consistentes e confiáveis quando há listas maiores ou informações complementares para revisar.
+
+### Alterado
+- Dashboard: os indicadores percentuais de faturas por pessoa, despesas por categoria, receitas por categoria e tendências de categorias agora deixam explícito que a comparação é contra o mês anterior.
+- Dashboard: pequenos ajustes visuais em widgets melhoram espaçamento, bordas e leitura de itens financeiros.
+
+### Corrigido
+- Dashboard: o widget `Lançamentos por categoria` agora recalcula corretamente o overflow quando a lista muda e volta a exibir o botão `Expandir` em listagens grandes.
+- Relatórios: em `/reports/installment-analysis`, os cards de parcelamentos agora exibem o ícone de observação ao lado do nome do lançamento quando há anotação cadastrada.
+
 ## [2.7.4] - 2026-06-09
 
 Esta versão corrige o fluxo de revisão de lançamentos compartilhados para que o acesso somente leitura proteja os dados originais sem impedir que a pessoa copie movimentos para a própria conta.

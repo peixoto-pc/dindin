@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --spacing-custom-height-card: 29rem;
+  --spacing-custom-height-card: 30rem;
   --spacing-8xl: 90rem;
 }
 
@@ -117,7 +117,7 @@
   --destructive: oklch(62% 0.2 28);
   --destructive-foreground: oklch(98% 0.005 30);
 
-  --border: oklch(24.576% 0.0072 67.399);
+  --border: oklch(29.675% 0.01144 67.3);
   --input: var(--border);
   --ring: var(--primary);
 

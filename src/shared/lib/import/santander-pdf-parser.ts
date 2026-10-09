@@ -12,6 +12,7 @@ const DATE_IN_LINE_RE = /(\d{2})\/(\d{2})\s+/;
 const BRL_AMOUNT_RE = /-?\d{1,3}(?:\.\d{3})*,\d{2}/g;
 const INSTALLMENT_SUFFIX_RE = /\s+(\d{2}\/\d{2,3})\s*$/;
 
+// @dindin: não inclui IOF\s nem ANUIDADE — essas linhas precisam ser capturadas
 const SKIP_LINE_RE =
 	/^(Pagamento e Demais|Parcelamentos|Despesas|VALOR TOTAL|Compra\s+Data|COTAÇÃO)/;
 const SKIP_DESC_PREFIXES = ["PAGAMENTO DE FATURA"];
@@ -21,7 +22,7 @@ async function extractLinesFromPdf(buffer: ArrayBuffer): Promise<string[]> {
 	pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 	const pdf = await pdfjsLib.getDocument({
-		data: new Uint8Array(buffer.slice(0)),
+		data: new Uint8Array(buffer.slice(0)), // @dindin: slice(0) evita detachment do ArrayBuffer pelo Web Worker
 	}).promise;
 	const lines: string[] = [];
 
@@ -135,7 +136,7 @@ export async function parseSantanderPdf(
 		if (!inTargetCard) continue;
 		if (SKIP_LINE_RE.test(line)) continue;
 
-		// Linhas de IOF sem data: continuação da transação anterior
+		// @dindin: trata linhas IOF sem data (ex: "IOF DESPESA NO EXTERIOR X,XX") usando lastDate
 		if (/^IOF\b/i.test(line)) {
 			const iofAmounts = [...line.matchAll(BRL_AMOUNT_RE)];
 			if (iofAmounts.length > 0 && transactions.length > 0) {

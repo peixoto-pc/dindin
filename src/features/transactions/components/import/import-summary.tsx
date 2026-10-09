@@ -1,8 +1,8 @@
 import { RiCalendarLine } from "@remixicon/react";
+import type { ReactNode } from "react";
 import { Badge } from "@/shared/components/ui/badge";
 import { Card } from "@/shared/components/ui/card";
 import type { ImportStatement } from "@/shared/lib/import/types";
-import { formatCurrency } from "@/shared/utils/currency";
 import { formatDate } from "@/shared/utils/date";
 
 interface ImportSummaryProps {
@@ -11,8 +11,7 @@ interface ImportSummaryProps {
 	selected: number;
 	duplicates: number;
 	uncategorized: number;
-	withoutPayer: number;
-	selectedTotal: number;
+	footer?: ReactNode; // @dindin: extension point para indicadores extras
 }
 
 export function ImportSummary({
@@ -21,22 +20,16 @@ export function ImportSummary({
 	selected,
 	duplicates,
 	uncategorized,
-	withoutPayer,
-	selectedTotal,
+	footer,
 }: ImportSummaryProps) {
 	return (
 		<Card className="flex flex-col gap-1 p-5 text-sm bg-primary/10 shadow-none ">
-			{/* Linha 1: título + total */}
-			<div className="flex items-center justify-between gap-4">
-				<div className="flex items-center gap-2">
-					<span className="font-medium">{statement.source}</span>
-					{statement.isCreditCard && (
-						<Badge variant="outline">Cartão de crédito</Badge>
-					)}
-				</div>
-				<span className="font-semibold tabular-nums">
-					{formatCurrency(selectedTotal)}
-				</span>
+			{/* Linha 1: título */}
+			<div className="flex items-center gap-2">
+				<span className="font-medium">{statement.source}</span>
+				{statement.isCreditCard && (
+					<Badge variant="outline">Cartão de crédito</Badge>
+				)}
 			</div>
 
 			{/* Linha 2: metadados */}
@@ -68,17 +61,9 @@ export function ImportSummary({
 						</span>
 					)
 				)}
-
-				{withoutPayer > 0 ? (
-					<span>{withoutPayer} sem pessoa</span>
-				) : (
-					selected > 0 && (
-						<span className="text-emerald-600 dark:text-emerald-400">
-							todas com pessoa ✓
-						</span>
-					)
-				)}
 			</div>
+
+			{footer}
 		</Card>
 	);
 }

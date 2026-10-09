@@ -43,6 +43,7 @@ import {
 } from "@/shared/components/ui/card";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import type { ImportStatement } from "@/shared/lib/import/types";
+import { formatCurrency } from "@/shared/utils/currency";
 
 const categoryGroupByTransactionType = {
 	expense: "despesa",
@@ -225,7 +226,9 @@ export function ImportPage({
 			selectedRows: selected,
 			duplicateCount: rows.filter((r) => r.isDuplicate).length,
 			uncategorizedCount: selected.filter((r) => !r.categoryId).length,
+			// @dindin: contagem de linhas sem pessoa para conferência da fatura
 			withoutPayerCount: selected.filter((r) => !r.payerId).length,
+			// @dindin: total de despesas selecionadas para conferência do valor da fatura
 			selectedTotal: selected
 				.filter((r) => r.transactionType === "expense")
 				.reduce((sum, r) => sum + r.amount, 0),
@@ -344,14 +347,31 @@ export function ImportPage({
 						</>
 					) : (
 						<>
+							{/* @dindin: footer exibe total de despesas e pessoas para conferência da fatura */}
 							<ImportSummary
 								statement={statement}
 								total={rows.length}
 								selected={selectedRows.length}
 								duplicates={duplicateCount}
 								uncategorized={uncategorizedCount}
-								selectedTotal={selectedTotal}
-								withoutPayer={withoutPayerCount}
+								footer={
+									<div className="flex items-center justify-between gap-4 text-sm">
+										{withoutPayerCount > 0 ? (
+											<span className="text-muted-foreground">
+												{withoutPayerCount} sem pessoa
+											</span>
+										) : (
+											selectedRows.length > 0 && (
+												<span className="text-emerald-600 dark:text-emerald-400">
+													todas com pessoa ✓
+												</span>
+											)
+										)}
+										<span className="ml-auto font-semibold tabular-nums">
+											{formatCurrency(selectedTotal)}
+										</span>
+									</div>
+								}
 							/>
 
 							<GlobalFields

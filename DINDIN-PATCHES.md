@@ -10,10 +10,9 @@ Busca rápida: `grep -r "@dindin" src/`
 
 ## Estado atual
 
-- **Upstream atual**: v2.7.13 (24 commits à frente do nosso merge)
-- **Dindin atual**: v2.7.4 (último merge: commit `3e2f58a`)
-- **Isolamento**: concluído (passos 1–5 executados) ✓
-- **Próxima ação planejada**: merge com upstream v2.7.13
+- **Upstream atual**: v2.7.13
+- **Dindin atual**: v2.7.13 (último merge: commit `b0510e5`)
+- **Próxima ação planejada**: próximo merge quando upstream avançar
 
 ---
 
